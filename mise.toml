@@ -1,8 +1,8 @@
 # Go itself is pinned by the toolchain directive in go.mod, not here.
 [tools]
-cocogitto = "7"
-golangci-lint = "2"
-lefthook = "2"
+cocogitto = "7.0.0"
+golangci-lint = "2.13.2"
+lefthook = "2.1.12"
 
 # Wire up the git hooks as part of `mise install`, so a fresh clone needs one step.
 [hooks]
