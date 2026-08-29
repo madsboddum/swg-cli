@@ -1,0 +1,49 @@
+package main
+
+import (
+	"fmt"
+	"io"
+	"text/tabwriter"
+)
+
+// command is a single swg subcommand. run receives the arguments following the
+// subcommand name and returns the process exit code.
+type command struct {
+	name    string
+	summary string
+	run     func(args []string, stdout, stderr io.Writer) int
+}
+
+// commands is the dispatch table, in the order help lists them.
+var commands = []command{
+	{name: "help", summary: "Show usage for swg or a subcommand"},
+	{name: "version", summary: "Print the swg version", run: runVersion},
+}
+
+// runHelp reads commands, so wiring it in the literal above would be an
+// initialization cycle.
+func init() {
+	commands[0].run = runHelp
+}
+
+func lookup(name string) (command, bool) {
+	for _, c := range commands {
+		if c.name == name {
+			return c, true
+		}
+	}
+	return command{}, false
+}
+
+func printUsage(w io.Writer) {
+	fmt.Fprint(w, "swg is a command line tool for Star Wars Galaxies file formats.\n\n")
+	fmt.Fprint(w, "Usage:\n\n\tswg <command> [arguments]\n\nCommands:\n\n")
+
+	tw := tabwriter.NewWriter(w, 0, 0, 4, ' ', 0)
+	for _, c := range commands {
+		fmt.Fprintf(tw, "\t%s\t%s\n", c.name, c.summary)
+	}
+	tw.Flush()
+
+	fmt.Fprint(w, "\nRun \"swg help <command>\" for details on a command.\n")
+}

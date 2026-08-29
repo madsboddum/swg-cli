@@ -1,0 +1,40 @@
+# Go itself is pinned by the toolchain directive in go.mod, not here.
+[tools]
+cocogitto = "7"
+golangci-lint = "2"
+lefthook = "2"
+
+# Wire up the git hooks as part of `mise install`, so a fresh clone needs one step.
+[hooks]
+postinstall = "lefthook install"
+
+[tasks.fmt]
+description = "Check formatting"
+run = '''
+unformatted=$(gofmt -l .)
+if [ -n "$unformatted" ]; then
+  echo "gofmt needs to be run on:"
+  echo "$unformatted"
+  exit 1
+fi
+'''
+
+[tasks.vet]
+description = "Run go vet"
+run = "go vet ./..."
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run ./..."
+
+[tasks.test]
+description = "Run tests"
+run = "go test ./..."
+
+[tasks.build]
+description = "Build the swg binary"
+run = "go build -o swg ./cmd/swg"
+
+[tasks.verify]
+description = "Everything CI runs"
+depends = ["fmt", "vet", "lint", "test", "build"]

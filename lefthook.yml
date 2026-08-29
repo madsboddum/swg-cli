@@ -1,0 +1,10 @@
+commit-msg:
+  jobs:
+    - name: conventional-commit
+      # `mise exec` because git hooks do not inherit mise's activated PATH.
+      run: mise exec -- cog verify --ignore-merge-commits --ignore-fixup-commits --file {1}
+
+pre-push:
+  jobs:
+    - name: verify
+      run: mise run verify

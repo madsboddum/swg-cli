@@ -1,0 +1,5 @@
+/swg
+/dist/
+*.zip
+mise.local.toml
+lefthook-local.yml
