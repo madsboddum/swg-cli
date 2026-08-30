@@ -1,0 +1,76 @@
+version: 2
+
+project_name: swg-cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: swg
+    binary: swg
+    main: ./cmd/swg
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: swg
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^feat(\(.+\))?!?:'
+      order: 0
+    - title: Fixes
+      regexp: '^fix(\(.+\))?!?:'
+      order: 1
+    - title: Other
+      order: 99
+  filters:
+    exclude:
+      - '^chore(\(.+\))?:'
+      - '^docs(\(.+\))?:'
+      - '^test(\(.+\))?:'
+
+homebrew_casks:
+  - name: swg
+    binaries:
+      - swg
+    homepage: https://github.com/madsboddum/swg-cli
+    description: Command line tool for the file formats found in Star Wars Galaxies
+    repository:
+      owner: madsboddum
+      name: homebrew-swg-cli
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    # The binaries are unsigned, so Gatekeeper would otherwise quarantine them.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/swg"]
+          end

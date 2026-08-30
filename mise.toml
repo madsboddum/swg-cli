@@ -2,6 +2,7 @@
 [tools]
 cocogitto = "7.0.0"
 golangci-lint = "2.13.2"
+goreleaser = "2.18.0"
 lefthook = "2.1.12"
 
 # Wire up the git hooks as part of `mise install`, so a fresh clone needs one step.
@@ -34,6 +35,10 @@ run = "go test ./..."
 [tasks.build]
 description = "Build the swg binary"
 run = "go build -o swg ./cmd/swg"
+
+[tasks.release-check]
+description = "Validate the GoReleaser config"
+run = "goreleaser check"
 
 [tasks.verify]
 description = "Everything CI runs"

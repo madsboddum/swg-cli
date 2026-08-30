@@ -10,7 +10,13 @@ Early. Only the skeleton exists — `swg version` and `swg help`. Format support
 
 ## Installation
 
-Download a binary from the [Releases page](https://github.com/madsboddum/swg-cli/releases), or build from source:
+Install from the Homebrew tap (macOS and Linux):
+
+```shell
+$ brew install madsboddum/swg-cli/swg
+```
+
+Otherwise download a binary from the [Releases page](https://github.com/madsboddum/swg-cli/releases), or build from source:
 
 ```shell
 $ go build -o swg ./cmd/swg
