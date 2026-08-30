@@ -18,6 +18,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	name := args[0]
+	if name == "__complete" {
+		return runComplete(args[1:], stdout, stderr)
+	}
+
 	cmd, ok := lookup(name)
 	if !ok {
 		fmt.Fprintf(stderr, "swg: unknown command %q\n\n", name)
