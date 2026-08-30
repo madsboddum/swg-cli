@@ -55,6 +55,27 @@ That runs gofmt, `go vet`, `golangci-lint`, tests and a build — the same set C
 
 A `pre-push` hook runs it for you. Use `git push --no-verify` to skip it.
 
+## Releasing
+
+Push a tag. That is the whole process.
+
+```shell
+$ git tag -a v0.2.0 -m v0.2.0
+$ git push origin v0.2.0
+```
+
+The tag must start with `v` — Go modules require the prefix, and `.github/workflows/release.yml` only triggers on `v*`. Push the commit before the tag, since the workflow builds the tagged commit from the remote.
+
+From there GoReleaser cross-compiles linux, darwin and windows on amd64 and arm64, publishes a GitHub release with the archives and checksums, writes the release notes from the commit prefixes, and commits an updated cask to the [tap](https://github.com/madsboddum/homebrew-swg-cli). Nothing needs to be built, uploaded or edited by hand, and the tap is never edited directly.
+
+`swg version` reports the tag without the `v`, stamped via ldflags.
+
+To check the release config without cutting a release:
+
+```shell
+$ mise run release-check
+```
+
 ## Code layout
 
 Format packages live at the repo root (`tre/`, `stf/`) so they stay importable on their own. Keep flag parsing, output formatting and exit codes in `cmd/swg/`.
