@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/madsboddum/swg-cli/archive"
+	"github.com/madsboddum/swg-cli/iff"
 	"github.com/madsboddum/swg-cli/stf"
 )
 
@@ -26,6 +28,11 @@ id the game writes, which makes a reverse lookup a matter of piping cat into
 grep:
 
     swg cat 'string/en/**.stf' | grep -i "you feel a disturbance"
+
+Files holding an IFF container, the FORM-based format underneath datatables,
+object templates, appearances and more, are printed as an indented tree of
+their nodes regardless of extension; the dispatch is on the FORM magic, not
+the name.
 
 Every other file is written out as the bytes it holds.
 
@@ -109,12 +116,22 @@ func match(paths []string, operand string) ([]string, error) {
 	return out, nil
 }
 
-// emit writes one file, decoding it first if it is a string table.
+// emit writes one file, decoding it first if it is a string table or an IFF
+// container.
 func emit(stack *archive.Stack, path string, stdout io.Writer) error {
 	b, err := stack.ReadFile(path)
 	if err != nil {
 		return err
 	}
+
+	if bytes.HasPrefix(b, []byte(iff.FormTag)) {
+		root, err := iff.Parse(b)
+		if err != nil {
+			return fmt.Errorf("%s: %w", path, err)
+		}
+		return printTree(stdout, root, 0)
+	}
+
 	if !strings.EqualFold(gopath.Ext(path), ".stf") {
 		_, err = stdout.Write(b)
 		return err
@@ -131,6 +148,55 @@ func emit(stack *archive.Stack, path string, stdout io.Writer) error {
 		}
 	}
 	return nil
+}
+
+// printTree writes n and its descendants as an indented tree: each node's
+// tag and size, plus a short hex/ASCII preview of a leaf's payload.
+func printTree(w io.Writer, n *iff.Node, depth int) error {
+	indent := strings.Repeat("  ", depth)
+	if n.IsForm() {
+		if _, err := fmt.Fprintf(w, "%sFORM %s (%d bytes)\n", indent, n.Type, n.Size); err != nil {
+			return err
+		}
+		for _, c := range n.Children {
+			if err := printTree(w, c, depth+1); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	_, err := fmt.Fprintf(w, "%s%s (%d bytes): %s\n", indent, n.Tag, n.Size, preview(n.Data))
+	return err
+}
+
+// previewLen caps how many bytes of a leaf's payload are shown.
+const previewLen = 16
+
+// preview renders the first bytes of b as hex alongside their ASCII form,
+// with non-printable bytes shown as a dot.
+func preview(b []byte) string {
+	shown := b
+	truncated := len(b) > previewLen
+	if truncated {
+		shown = b[:previewLen]
+	}
+
+	hex := make([]string, len(shown))
+	ascii := make([]byte, len(shown))
+	for i, c := range shown {
+		hex[i] = fmt.Sprintf("%02x", c)
+		if c >= 0x20 && c < 0x7f {
+			ascii[i] = c
+		} else {
+			ascii[i] = '.'
+		}
+	}
+
+	s := strings.Join(hex, " ") + "  " + string(ascii)
+	if truncated {
+		s += "..."
+	}
+	return s
 }
 
 // stringID is the @file part of the prefix on a string table's lines. Tables

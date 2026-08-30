@@ -8,6 +8,20 @@ permissions:
   contents: read
 
 jobs:
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # cog needs the base commit present to walk the PR's range.
+          fetch-depth: 0
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+      - name: Check commit messages
+        run: cog check --ignore-merge-commits ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+
   verify:
     runs-on: ubuntu-latest
 
