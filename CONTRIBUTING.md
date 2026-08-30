@@ -55,6 +55,8 @@ That runs gofmt, `go vet`, `golangci-lint`, tests and a build — the same set C
 
 A `pre-push` hook runs it for you. Use `git push --no-verify` to skip it.
 
+`golangci-lint` also enforces complexity limits (`cyclop`, `gocognit`, `maintidx`, `funlen`, `nestif`) and copy-paste detection (`dupl`), tuned to what the tree already passes. If a function genuinely can't fit — a flat, table-driven parser, say — add a targeted `//nolint:<linter> // reason` rather than loosening the limit in `.golangci.yml`.
+
 ## Releasing
 
 Push a tag. That is the whole process.
