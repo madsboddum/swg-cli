@@ -118,6 +118,7 @@ func match(paths []string, operand string) ([]string, error) {
 
 // emit writes one file, decoding it first if it is a string table or an IFF
 // container.
+// Why cat sniffs rather than being told the format: docs/decisions/0001-reading-sniffs-the-format.md
 func emit(stack *archive.Stack, path string, stdout io.Writer) error {
 	b, err := stack.ReadFile(path)
 	if err != nil {

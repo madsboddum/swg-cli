@@ -81,3 +81,9 @@ $ mise run release-check
 ## Code layout
 
 Format packages live at the repo root (`tre/`, `stf/`) so they stay importable on their own. Keep flag parsing, output formatting and exit codes in `cmd/swg/`.
+
+## Decisions
+
+Design choices that the code cannot explain on its own are recorded in [`docs/decisions/`](docs/decisions/) — why `cat` sniffs the format rather than being told it, why every command is a verb, why there is no in-place archive editing.
+
+Read them before changing the shape of the CLI. They exist so a rejected option is not quietly reintroduced as a fix. If you disagree with one, supersede it with a new file rather than editing the old one — the trail is the point.

@@ -16,7 +16,8 @@ type command struct {
 	run   func(args []string, stdout, stderr io.Writer) int
 }
 
-// commands is the dispatch table, in the order help lists them.
+// commands is the dispatch table, in the order help lists them. Every entry is
+// a verb and none is a format name: docs/decisions/0002-commands-are-verbs.md
 var commands = []command{
 	{name: "cat", summary: "Write paths from the archives to standard output", run: runCat, usage: catUsage},
 	{name: "help", summary: "Show usage for swg or a subcommand"},
