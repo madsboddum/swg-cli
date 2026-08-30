@@ -128,6 +128,7 @@ func (r *Reader) Close() error {
 	return err
 }
 
+//nolint:funlen // flat header/index/name-block parsing; splitting it obscures the layout it mirrors.
 func (r *Reader) init(b []byte) error {
 	var h header
 	if len(b) < headerSize {

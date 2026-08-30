@@ -24,6 +24,7 @@ them, or the shell will try to expand them first.
         list every location holding the path, in precedence order
 `
 
+//nolint:funlen // flat flag parsing, dispatch, and output formatting; splitting it adds indirection, not clarity.
 func runWhich(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("which", flag.ContinueOnError)
 	fs.SetOutput(stderr)

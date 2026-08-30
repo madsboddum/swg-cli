@@ -4,6 +4,12 @@ linters:
   default: standard
   enable:
     - staticcheck
+    - gocognit
+    - cyclop
+    - maintidx
+    - dupl
+    - funlen
+    - nestif
   settings:
     errcheck:
       # Writes to stdout/stderr have no useful recovery in a CLI.
@@ -12,3 +18,12 @@ linters:
         - fmt.Fprintf
         - fmt.Fprintln
         - (*text/tabwriter.Writer).Flush
+    cyclop:
+      # Worst offender today (toc.Reader.init) is 18; leave headroom, not slack.
+      max-complexity: 20
+  exclusions:
+    rules:
+      # Table-driven tests are long but flat; splitting them hurts readability more than it helps.
+      - path: _test\.go
+        linters:
+          - funlen
