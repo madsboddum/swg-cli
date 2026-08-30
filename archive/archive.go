@@ -55,11 +55,17 @@ type Stack struct {
 	// byArchive maps an archive filename to the paths a table of contents says
 	// it holds, in table order.
 	byArchive map[string][]string
+	// tocFiles maps those same paths to the table entry describing where in the
+	// archive the bytes sit.
+	tocFiles map[tocKey]*toc.File
 
 	// sources maps a path to every place it was found, winner first.
 	sources map[string][]Source
 	paths   []string
 }
+
+// tocKey addresses one member of one archive, the way a Source names it.
+type tocKey struct{ archive, path string }
 
 // Open indexes every .tre archive in dir along with the loose files beside
 // them. Archives carrying no index of their own are read through the client
@@ -74,6 +80,7 @@ func Open(dir string) (*Stack, error) {
 		dir:       dir,
 		tres:      make(map[string]*tre.ReadCloser),
 		byArchive: make(map[string][]string),
+		tocFiles:  make(map[tocKey]*toc.File),
 		sources:   make(map[string][]Source),
 	}
 
@@ -150,6 +157,32 @@ func (s *Stack) Paths() []string { return s.paths }
 // the path is in neither the archives nor the loose files.
 func (s *Stack) Sources(path string) []Source { return s.sources[path] }
 
+// ReadFile returns the contents of path as the client would see them, reading
+// from the winning source. It reports fs.ErrNotExist if the path is in neither
+// the archives nor the loose files.
+func (s *Stack) ReadFile(path string) ([]byte, error) {
+	srcs := s.sources[path]
+	if len(srcs) == 0 {
+		return nil, fmt.Errorf("%s: %w", path, fs.ErrNotExist)
+	}
+	return s.ReadFileFrom(path, srcs[0])
+}
+
+// ReadFileFrom returns the contents of path as one particular source holds it,
+// ignoring precedence.
+func (s *Stack) ReadFileFrom(path string, src Source) ([]byte, error) {
+	if src.Loose() {
+		return os.ReadFile(filepath.Join(s.dir, filepath.FromSlash(path)))
+	}
+	if r, ok := s.tres[src.Archive]; ok {
+		return r.ReadFile(path)
+	}
+	if f, ok := s.tocFiles[tocKey{archive: src.Archive, path: path}]; ok {
+		return f.Bytes()
+	}
+	return nil, fmt.Errorf("%s in %s: %w", path, src.Archive, fs.ErrNotExist)
+}
+
 // ArchivePaths lists the paths held by a single archive, sorted, ignoring
 // precedence. It reports fs.ErrNotExist if the stack holds no such archive.
 func (s *Stack) ArchivePaths(name string) ([]string, error) {
@@ -189,6 +222,12 @@ func (s *Stack) readTables(tables []string) error {
 				continue
 			}
 			s.byArchive[name] = append(s.byArchive[name], f.Name)
+			// A repeat within one archive shadows the later entry; keep the first,
+			// matching how the readers resolve duplicates.
+			k := tocKey{archive: name, path: f.Name}
+			if _, dup := s.tocFiles[k]; !dup {
+				s.tocFiles[k] = f
+			}
 		}
 	}
 	return nil

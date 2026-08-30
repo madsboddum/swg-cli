@@ -18,6 +18,7 @@ type command struct {
 
 // commands is the dispatch table, in the order help lists them.
 var commands = []command{
+	{name: "cat", summary: "Write paths from the archives to standard output", run: runCat, usage: catUsage},
 	{name: "help", summary: "Show usage for swg or a subcommand"},
 	{name: "ls", summary: "List paths across the archives", run: runLs, usage: lsUsage},
 	{name: "version", summary: "Print the swg version", run: runVersion},
@@ -26,7 +27,11 @@ var commands = []command{
 // runHelp reads commands, so wiring it in the literal above would be an
 // initialization cycle.
 func init() {
-	commands[0].run = runHelp
+	for i := range commands {
+		if commands[i].name == "help" {
+			commands[i].run = runHelp
+		}
+	}
 }
 
 func lookup(name string) (command, bool) {

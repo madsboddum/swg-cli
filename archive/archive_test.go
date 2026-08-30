@@ -108,6 +108,87 @@ func TestFilesBesideTheArchivesAreNotPaths(t *testing.T) {
 	}
 }
 
+func TestReadFileTakesTheWinningSource(t *testing.T) {
+	dir := t.TempDir()
+	writeArchive(t, filepath.Join(dir, "base.tre"), map[string]string{
+		"string/en/ui.stf":  "base ui",
+		"texture/crate.dds": "base crate",
+	})
+	writeArchive(t, filepath.Join(dir, "patch_01.tre"), map[string]string{
+		"string/en/ui.stf": "patched ui",
+	})
+	writeLoose(t, dir, "texture/crate.dds", "loose crate")
+
+	s := open(t, dir)
+
+	for path, want := range map[string]string{
+		"string/en/ui.stf":  "patched ui",
+		"texture/crate.dds": "loose crate",
+	} {
+		b, err := s.ReadFile(path)
+		if err != nil {
+			t.Fatalf("ReadFile(%q): %v", path, err)
+		}
+		if string(b) != want {
+			t.Errorf("ReadFile(%q) = %q, want %q", path, b, want)
+		}
+	}
+}
+
+func TestReadFileFromNamesTheArchive(t *testing.T) {
+	dir := t.TempDir()
+	writeArchive(t, filepath.Join(dir, "base.tre"), map[string]string{"a.stf": "base a"})
+	writeArchive(t, filepath.Join(dir, "patch_01.tre"), map[string]string{"a.stf": "patched a"})
+
+	s := open(t, dir)
+
+	b, err := s.ReadFileFrom("a.stf", Source{Archive: "base.tre"})
+	if err != nil {
+		t.Fatalf("ReadFileFrom(): %v", err)
+	}
+	if string(b) != "base a" {
+		t.Errorf("ReadFileFrom() = %q, want the shadowed copy", b)
+	}
+	if _, err := s.ReadFileFrom("a.stf", Source{Archive: "absent.tre"}); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("ReadFileFrom(absent) error = %v, want fs.ErrNotExist", err)
+	}
+}
+
+func TestReadFileThroughTheTableOfContents(t *testing.T) {
+	dir := t.TempDir()
+	writeTable(t, dir, "sku0_client.toc", []tocMember{
+		{archive: "patch_00.tre", name: "string/en/ui.stf", data: "base ui"},
+		{archive: "patch_01.tre", name: "string/en/ui.stf", data: "patched ui"},
+	})
+
+	s := open(t, dir)
+
+	b, err := s.ReadFile("string/en/ui.stf")
+	if err != nil {
+		t.Fatalf("ReadFile(): %v", err)
+	}
+	if string(b) != "patched ui" {
+		t.Errorf("ReadFile() = %q, want %q", b, "patched ui")
+	}
+
+	b, err = s.ReadFileFrom("string/en/ui.stf", Source{Archive: "patch_00.tre"})
+	if err != nil {
+		t.Fatalf("ReadFileFrom(): %v", err)
+	}
+	if string(b) != "base ui" {
+		t.Errorf("ReadFileFrom() = %q, want %q", b, "base ui")
+	}
+}
+
+func TestReadFileReportsUnknownPath(t *testing.T) {
+	dir := t.TempDir()
+	writeArchive(t, filepath.Join(dir, "base.tre"), map[string]string{"a.stf": "a"})
+
+	if _, err := open(t, dir).ReadFile("nope.stf"); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("ReadFile() error = %v, want fs.ErrNotExist", err)
+	}
+}
+
 func TestArchivePathsIgnorePrecedence(t *testing.T) {
 	dir := t.TempDir()
 	writeArchive(t, filepath.Join(dir, "base.tre"), map[string]string{
