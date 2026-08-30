@@ -11,4 +11,6 @@ disable_changelog = true
 disable_bump_commit = true
 
 pre_bump_hooks = ["mise run verify"]
-post_bump_hooks = ["git push", "git push origin {{version}}"]
+# {{version_tag}}, not {{version}} — the latter drops the tag_prefix, so the
+# push names a ref that does not exist.
+post_bump_hooks = ["git push", "git push origin {{version_tag}}"]
