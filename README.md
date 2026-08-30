@@ -30,6 +30,30 @@ Building needs nothing installed but Go. `go.mod` pins the toolchain, so the rig
 $ sudo ln -s /path/to/swg /usr/local/bin/swg
 ```
 
+### Shell completion
+
+```shell
+# bash
+$ swg completion bash > /usr/local/etc/bash_completion.d/swg
+
+# zsh
+$ swg completion zsh > "${fpath[1]}/_swg"
+
+# fish
+$ swg completion fish > ~/.config/fish/completions/swg.fish
+```
+
+Restart the shell, or source the file, to pick it up. It completes subcommands,
+flags, `-archive` names, and paths inside the archives a directory at a time:
+
+```shell
+$ swg cat str<TAB>
+$ swg cat string/<TAB>
+string/en/  string/ja/
+$ swg cat string/en/ba<TAB>
+badge_d.stf  badge_n.stf
+```
+
 ## The archive directory
 
 Every subcommand works against a directory of `.tre` archives, meaning a game install. Name it with `--dir`, after the subcommand:

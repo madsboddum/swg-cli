@@ -20,6 +20,7 @@ type command struct {
 // a verb and none is a format name: docs/decisions/0002-commands-are-verbs.md
 var commands = []command{
 	{name: "cat", summary: "Write paths from the archives to standard output", run: runCat, usage: catUsage},
+	{name: "completion", summary: "Print a shell completion script", run: runCompletion, usage: completionUsage},
 	{name: "help", summary: "Show usage for swg or a subcommand"},
 	{name: "ls", summary: "List paths across the archives", run: runLs, usage: lsUsage},
 	{name: "version", summary: "Print the swg version", run: runVersion},
