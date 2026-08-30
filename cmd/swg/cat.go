@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/madsboddum/swg-cli/archive"
+	"github.com/madsboddum/swg-cli/dtable"
 	"github.com/madsboddum/swg-cli/iff"
 	"github.com/madsboddum/swg-cli/stf"
 )
@@ -33,6 +34,10 @@ Files holding an IFF container, the FORM-based format underneath datatables,
 object templates, appearances and more, are printed as an indented tree of
 their nodes regardless of extension; the dispatch is on the FORM magic, not
 the name.
+
+A DTII datatable is instead printed one row per line, tab-separated, header
+row first. A malformed or unrecognised DTII falls back to the node tree. Pipe
+into "column -t -s $'\t'" for an aligned view on a terminal.
 
 Every other file is written out as the bytes it holds.
 
@@ -130,6 +135,11 @@ func emit(stack *archive.Stack, path string, stdout io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
+		if root.IsForm() && root.Type == dtable.FormType {
+			if table, err := dtable.Decode(root); err == nil {
+				return printTable(stdout, table)
+			}
+		}
 		return printTree(stdout, root, 0)
 	}
 
@@ -145,6 +155,30 @@ func emit(stack *archive.Stack, path string, stdout io.Writer) error {
 	id := stringID(path)
 	for _, e := range table.Entries() {
 		if _, err := fmt.Fprintf(stdout, "%s:%s|%s\n", id, e.Key, e.Value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// printTable writes a datatable one row per line, tab-separated, header row
+// first, so the output pipes into cut, awk and friends the way .stf output
+// does.
+func printTable(w io.Writer, table *dtable.Table) error {
+	names := make([]string, len(table.Columns))
+	for i, c := range table.Columns {
+		names[i] = c.Name
+	}
+	if _, err := fmt.Fprintln(w, strings.Join(names, "\t")); err != nil {
+		return err
+	}
+
+	cells := make([]string, len(table.Columns))
+	for _, row := range table.Rows {
+		for i, v := range row {
+			cells[i] = fmt.Sprint(v)
+		}
+		if _, err := fmt.Fprintln(w, strings.Join(cells, "\t")); err != nil {
 			return err
 		}
 	}

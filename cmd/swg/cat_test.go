@@ -55,6 +55,18 @@ func TestCat(t *testing.T) {
 				"  NAME (5 bytes): 68 65 6c 6c 6f  hello\n",
 		},
 		{
+			name: "a DTII datatable renders as tab-separated rows",
+			args: []string{"cat", "datatable/npc.iff"},
+			wantOut: "level\tname\n" +
+				"5\twomp rat\n",
+		},
+		{
+			name: "a malformed DTII falls back to the node tree",
+			args: []string{"cat", "datatable/broken.iff"},
+			wantOut: "FORM DTII (16 bytes)\n" +
+				"  FORM 0001 (4 bytes)\n",
+		},
+		{
 			name:    "the winning source is the one read",
 			args:    []string{"cat", "texture/patched.dds"},
 			wantOut: "loose wins",
@@ -174,6 +186,8 @@ func catFixture(t *testing.T) string {
 		"texture/crate.dds":      "raw crate bytes",
 		"texture/patched.dds":    "archive loses",
 		"appearance/crate.apt":   string(iffBytes(t, "TEST", "NAME", "hello")),
+		"datatable/npc.iff":      string(dtableBytes(t)),
+		"datatable/broken.iff":   string(form("DTII", form("0001"))),
 	})
 
 	loose := filepath.Join(dir, "texture", "patched.dds")
@@ -205,6 +219,64 @@ func iffBytes(t *testing.T, formType, leafTag, leafData string) []byte {
 	}
 	out.Write(body.Bytes())
 	return out.Bytes()
+}
+
+// chunk lays out a leaf chunk: a 4CC tag, its big-endian length, then data.
+func chunk(tag string, data []byte) []byte {
+	var buf bytes.Buffer
+	buf.WriteString(tag)
+	if err := binary.Write(&buf, binary.BigEndian, uint32(len(data))); err != nil {
+		panic(err)
+	}
+	buf.Write(data)
+	return buf.Bytes()
+}
+
+// form lays out a FORM chunk: the FORM tag, the length of what follows, the
+// 4CC form type, then the concatenated bytes of its children.
+func form(typ string, children ...[]byte) []byte {
+	var body bytes.Buffer
+	body.WriteString(typ)
+	for _, c := range children {
+		body.Write(c)
+	}
+	return chunk("FORM", body.Bytes())
+}
+
+// dtableBytes builds a version 0001 DTII datatable of one int column and one
+// string column, holding a single row.
+func dtableBytes(t *testing.T) []byte {
+	t.Helper()
+
+	cstrings := func(s ...string) []byte {
+		var buf bytes.Buffer
+		if err := binary.Write(&buf, binary.LittleEndian, uint32(len(s))); err != nil {
+			t.Fatal(err)
+		}
+		for _, v := range s {
+			buf.WriteString(v)
+			buf.WriteByte(0)
+		}
+		return buf.Bytes()
+	}
+
+	var rows bytes.Buffer
+	if err := binary.Write(&rows, binary.LittleEndian, uint32(1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := binary.Write(&rows, binary.LittleEndian, int32(5)); err != nil {
+		t.Fatal(err)
+	}
+	rows.WriteString("womp rat")
+	rows.WriteByte(0)
+
+	return form("DTII",
+		form("0001",
+			chunk("COLS", cstrings("level", "name")),
+			chunk("TYPE", []byte("i\x00s\x00")),
+			chunk("ROWS", rows.Bytes()),
+		),
+	)
 }
 
 // stfEntry is one key and value of a string table fixture.
