@@ -119,7 +119,15 @@ _swg() {
     compadd -S '' -- "${dirs[@]}"
     compadd -- "${leaves[@]}"
 }
-_swg
+
+# compinit's #compdef scan registers _swg by itself when this file is loaded
+# from fpath; eval'ing the script instead (e.g. straight from .zshrc) needs
+# the explicit compdef, since nothing then calls _swg from a completion widget.
+if [ "$funcstack[1]" = "_swg" ]; then
+    _swg "$@"
+else
+    compdef _swg swg
+fi
 `
 
 // fishCompletion passes the command line's own words to __complete; fish
