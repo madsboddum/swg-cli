@@ -49,6 +49,12 @@ func TestCat(t *testing.T) {
 			wantOut: "raw crate bytes",
 		},
 		{
+			name: "an IFF container is rendered as a tree, whatever its extension",
+			args: []string{"cat", "appearance/crate.apt"},
+			wantOut: "FORM TEST (17 bytes)\n" +
+				"  NAME (5 bytes): 68 65 6c 6c 6f  hello\n",
+		},
+		{
 			name:    "the winning source is the one read",
 			args:    []string{"cat", "texture/patched.dds"},
 			wantOut: "loose wins",
@@ -167,6 +173,7 @@ func catFixture(t *testing.T) string {
 		"bad/broken.stf":         "not a string table",
 		"texture/crate.dds":      "raw crate bytes",
 		"texture/patched.dds":    "archive loses",
+		"appearance/crate.apt":   string(iffBytes(t, "TEST", "NAME", "hello")),
 	})
 
 	loose := filepath.Join(dir, "texture", "patched.dds")
@@ -177,6 +184,27 @@ func catFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return dir
+}
+
+// iffBytes builds a FORM of the given type holding one leaf chunk.
+func iffBytes(t *testing.T, formType, leafTag, leafData string) []byte {
+	t.Helper()
+
+	var body bytes.Buffer
+	body.WriteString(formType)
+	body.WriteString(leafTag)
+	if err := binary.Write(&body, binary.BigEndian, uint32(len(leafData))); err != nil {
+		t.Fatal(err)
+	}
+	body.WriteString(leafData)
+
+	var out bytes.Buffer
+	out.WriteString("FORM")
+	if err := binary.Write(&out, binary.BigEndian, uint32(body.Len())); err != nil {
+		t.Fatal(err)
+	}
+	out.Write(body.Bytes())
+	return out.Bytes()
 }
 
 // stfEntry is one key and value of a string table fixture.
