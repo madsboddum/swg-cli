@@ -22,6 +22,11 @@ func runHelp(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	if cmd.usage != "" {
+		fmt.Fprint(stdout, cmd.usage)
+		return 0
+	}
+
 	fmt.Fprintf(stdout, "usage: swg %s\n\n%s\n", cmd.name, cmd.summary)
 	return 0
 }

@@ -11,12 +11,15 @@ import (
 type command struct {
 	name    string
 	summary string
-	run     func(args []string, stdout, stderr io.Writer) int
+	// usage is the long help text. Commands without one fall back to summary.
+	usage string
+	run   func(args []string, stdout, stderr io.Writer) int
 }
 
 // commands is the dispatch table, in the order help lists them.
 var commands = []command{
 	{name: "help", summary: "Show usage for swg or a subcommand"},
+	{name: "ls", summary: "List paths across the archives", run: runLs, usage: lsUsage},
 	{name: "version", summary: "Print the swg version", run: runVersion},
 }
 
