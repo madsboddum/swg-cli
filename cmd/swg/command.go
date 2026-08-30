@@ -22,6 +22,7 @@ var commands = []command{
 	{name: "help", summary: "Show usage for swg or a subcommand"},
 	{name: "ls", summary: "List paths across the archives", run: runLs, usage: lsUsage},
 	{name: "version", summary: "Print the swg version", run: runVersion},
+	{name: "which", summary: "Show which archive a path is read from", run: runWhich, usage: whichUsage},
 }
 
 // runHelp reads commands, so wiring it in the literal above would be an
