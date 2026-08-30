@@ -59,14 +59,27 @@ A `pre-push` hook runs it for you. Use `git push --no-verify` to skip it.
 
 ## Releasing
 
-Push a tag. That is the whole process.
+Merge to `main` and wait for the night. That is the whole process.
+
+`.github/workflows/tag.yml` runs `cog bump --auto` on a nightly schedule. Cocogitto reads the commits since the last tag and picks the next version from their prefixes — `feat:` bumps the minor, `fix:` the patch, a `BREAKING CHANGE:` footer the major — then tags `main` and pushes the tag. A day's merges ship as one release rather than one release each.
+
+A night with nothing but `docs:`, `chore:`, `ci:` and the like is not a release, and neither is a night with no merges at all. `cog` tags nothing and exits cleanly, and the release job is skipped. That exemption is cocogitto's own rule, not a pattern match in the workflow, so `feat!:` and breaking-change footers are read correctly.
+
+To release without waiting, run the **Tag** workflow from the Actions tab. Its `level` input defaults to `auto`, the same choice the schedule makes; set it to `patch`, `minor` or `major` to force a version no commit warrants.
+
+The workflow calls `release.yml` directly rather than letting the pushed tag trigger it. A push authenticated with the default `GITHUB_TOKEN` does not fire other workflows, so a tag trigger alone would never run. `release.yml` keeps its `v*` trigger for tags pushed by hand.
+
+The same bump runs from your own machine:
 
 ```shell
-$ git tag -a v0.2.0 -m v0.2.0
-$ git push origin v0.2.0
+$ mise run release
 ```
 
-The tag must start with `v` — Go modules require the prefix, and `.github/workflows/release.yml` only triggers on `v*`. Push the commit before the tag, since the workflow builds the tagged commit from the remote.
+Add `--dry-run` to print the version it would pick and stop. It refuses to run on a dirty tree.
+
+Config lives in `cog.toml`. `pre_bump_hooks` runs `mise run verify` and aborts the release if it fails. No changelog is written — GoReleaser generates the release notes from the same commits, and a second copy would drift.
+
+The tag must start with `v` — Go modules require the prefix, and `release.yml`'s own trigger only matches `v*`. `tag_prefix` in `cog.toml` handles that.
 
 From there GoReleaser cross-compiles linux, darwin and windows on amd64 and arm64, publishes a GitHub release with the archives and checksums, writes the release notes from the commit prefixes, and commits an updated cask to the [tap](https://github.com/madsboddum/homebrew-swg-cli). Nothing needs to be built, uploaded or edited by hand, and the tap is never edited directly.
 

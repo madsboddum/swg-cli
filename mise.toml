@@ -36,6 +36,10 @@ run = "go test ./..."
 description = "Build the swg binary"
 run = "go build -o swg ./cmd/swg"
 
+[tasks.release]
+description = "Tag the next release, derived from the commit log"
+run = "cog bump --auto"
+
 [tasks.release-check]
 description = "Validate the GoReleaser config"
 run = "goreleaser check"

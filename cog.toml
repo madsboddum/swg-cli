@@ -1,0 +1,14 @@
+# cocogitto: `cog verify` in the commit-msg hook, `cog bump` for releases.
+
+tag_prefix = "v"
+
+# GoReleaser writes the release notes from the same commits, so a CHANGELOG.md
+# here would be a second copy that drifts.
+disable_changelog = true
+
+# Nothing in the tree carries the version — it is stamped via ldflags at build
+# time — so there is nothing for a bump commit to contain. Tag HEAD instead.
+disable_bump_commit = true
+
+pre_bump_hooks = ["mise run verify"]
+post_bump_hooks = ["git push", "git push origin {{version}}"]

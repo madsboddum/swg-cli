@@ -1,0 +1,73 @@
+name: Tag
+
+on:
+  schedule:
+    # 03:00 UTC. GitHub runs scheduled jobs late under load, so treat the time
+    # as "some point that night", not a deadline.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      level:
+        description: "Version to pick: auto reads the commit log, the rest force a bump"
+        type: choice
+        default: auto
+        options: [auto, patch, minor, major]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    outputs:
+      tagged: ${{ steps.bump.outputs.tagged }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # cog walks history back to the last tag to pick the next version.
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+      - name: Identify as the release bot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Bump
+        id: bump
+        env:
+          LEVEL: ${{ inputs.level || 'auto' }}
+        run: |
+          before=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          cog bump "--$LEVEL"
+          # cog exits 0 without tagging when nothing since the last tag is a
+          # feat, fix or breaking change, so ask the tags themselves. A nightly
+          # run usually finds HEAD already carrying the last release's tag, so
+          # compare against the tag from before the bump rather than just
+          # looking for one.
+          tag=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -z "$tag" ] || [ "$tag" = "$before" ]; then
+            echo "tagged=false" >> "$GITHUB_OUTPUT"
+            echo "No releasable commits since $before."
+            exit 0
+          fi
+          # Only release a tag the remote actually has; GoReleaser publishes
+          # against origin, so a post-bump hook that failed to push must not
+          # look like a successful release.
+          git ls-remote --exit-code origin "refs/tags/$tag" > /dev/null
+          echo "tagged=true" >> "$GITHUB_OUTPUT"
+          echo "Tagged $tag"
+
+  release:
+    needs: tag
+    if: needs.tag.outputs.tagged == 'true'
+    # The tag cog just pushed points at this commit, so GoReleaser sees it.
+    uses: ./.github/workflows/release.yml
+    permissions:
+      contents: write
+    secrets: inherit

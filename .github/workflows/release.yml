@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - "v*"
+  # Called by tag.yml after it pushes a tag. A CI push authenticated with the
+  # default GITHUB_TOKEN does not trigger the tag filter above, so the release
+  # has to be invoked directly rather than left to fire on its own.
+  workflow_call:
 
 permissions:
   contents: write
