@@ -70,7 +70,7 @@ The tag must start with `v` — Go modules require the prefix, and `.github/work
 
 From there GoReleaser cross-compiles linux, darwin and windows on amd64 and arm64, publishes a GitHub release with the archives and checksums, writes the release notes from the commit prefixes, and commits an updated cask to the [tap](https://github.com/madsboddum/homebrew-swg-cli). Nothing needs to be built, uploaded or edited by hand, and the tap is never edited directly.
 
-`swg version` reports the tag without the `v`, stamped via ldflags.
+`swg version` reports the tag, `v` and all, stamped via ldflags. That is `.Tag` rather than GoReleaser's `.Version`, which strips the prefix. Keeping it matches the pseudo-version an untagged local build falls back to, so both look alike.
 
 To check the release config without cutting a release:
 
