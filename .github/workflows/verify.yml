@@ -18,7 +18,7 @@ jobs:
           # cog needs the base commit present to walk the PR's range.
           fetch-depth: 0
       - name: Set up mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v4
       - name: Check commit messages
         run: cog check --ignore-merge-commits ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
 
@@ -32,6 +32,6 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Set up mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v4
       - name: Verify
         run: mise run verify
