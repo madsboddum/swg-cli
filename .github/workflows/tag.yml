@@ -2,9 +2,10 @@ name: Tag
 
 on:
   schedule:
-    # 03:00 UTC. GitHub runs scheduled jobs late under load, so treat the time
-    # as "some point that night", not a deadline.
-    - cron: "0 3 * * *"
+    # 03:37 UTC. GitHub runs scheduled jobs late under load, so treat the time
+    # as "some point that night", not a deadline. An off-the-hour minute is
+    # less likely to be delayed or dropped than 03:00.
+    - cron: "37 3 * * *"
   workflow_dispatch:
     inputs:
       level:
