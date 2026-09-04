@@ -30,7 +30,7 @@ jobs:
           # cog walks history back to the last tag to pick the next version.
           fetch-depth: 0
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Set up mise
