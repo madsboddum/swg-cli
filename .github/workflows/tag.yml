@@ -25,7 +25,7 @@ jobs:
       tagged: ${{ steps.bump.outputs.tagged }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # cog walks history back to the last tag to pick the next version.
           fetch-depth: 0
