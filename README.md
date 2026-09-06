@@ -201,10 +201,9 @@ The `@file:key|value` output format carries over from the stf tool, minus the `.
 | `ls` | List paths across the archives |
 | `which` | Show which archive a path is read from |
 | `version` | Print the version |
-| `help` | Show usage for swg or a subcommand |
 
 ```shell
-$ swg help <command>
+$ swg <command> --help
 ```
 
 ## Layout

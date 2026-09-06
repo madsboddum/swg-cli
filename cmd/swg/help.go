@@ -5,28 +5,12 @@ import (
 	"io"
 )
 
-func runHelp(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 {
-		printUsage(stdout)
-		return 0
-	}
-
-	if len(args) > 1 {
-		fmt.Fprint(stderr, "usage: swg help [command]\n")
-		return 2
-	}
-
-	cmd, ok := lookup(args[0])
-	if !ok {
-		fmt.Fprintf(stderr, "swg help: unknown command %q\n", args[0])
-		return 2
-	}
-
+// printCommandUsage writes a command's long help, falling back to its summary
+// for commands that carry no usage text.
+func printCommandUsage(w io.Writer, cmd command) {
 	if cmd.usage != "" {
-		fmt.Fprint(stdout, cmd.usage)
-		return 0
+		fmt.Fprint(w, cmd.usage)
+		return
 	}
-
-	fmt.Fprintf(stdout, "usage: swg %s\n\n%s\n", cmd.name, cmd.summary)
-	return 0
+	fmt.Fprintf(w, "usage: swg %s\n\n%s\n", cmd.name, cmd.summary)
 }

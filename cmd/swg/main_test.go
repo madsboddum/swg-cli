@@ -18,9 +18,12 @@ func TestRun(t *testing.T) {
 		{name: "unknown command", args: []string{"nope"}, wantCode: 2, wantErr: `unknown command "nope"`},
 		{name: "version", args: []string{"version"}, wantCode: 0, wantOut: "swg "},
 		{name: "version with extra arg", args: []string{"version", "x"}, wantCode: 2, wantErr: "usage: swg version"},
-		{name: "help", args: []string{"help"}, wantCode: 0, wantOut: "Usage:"},
-		{name: "help version", args: []string{"help", "version"}, wantCode: 0, wantOut: "usage: swg version"},
-		{name: "help unknown", args: []string{"help", "nope"}, wantCode: 2, wantErr: `unknown command "nope"`},
+		{name: "help flag", args: []string{"--help"}, wantCode: 0, wantOut: "Usage:"},
+		{name: "short help flag", args: []string{"-h"}, wantCode: 0, wantOut: "Usage:"},
+		{name: "command help flag", args: []string{"version", "--help"}, wantCode: 0, wantOut: "usage: swg version"},
+		{name: "command help flag with usage", args: []string{"cat", "--help"}, wantCode: 0, wantOut: "usage: swg cat"},
+		{name: "help flag after other args", args: []string{"cat", "foo", "-h"}, wantCode: 0, wantOut: "usage: swg cat"},
+		{name: "help unknown", args: []string{"nope", "--help"}, wantCode: 2, wantErr: `unknown command "nope"`},
 	}
 
 	for _, tt := range tests {

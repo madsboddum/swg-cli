@@ -42,7 +42,7 @@ func TestCompletion(t *testing.T) {
 
 func TestHelpCompletionShowsTheLongUsage(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	if code := run([]string{"help", "completion"}, &stdout, &stderr); code != 0 {
+	if code := run([]string{"completion", "--help"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit code = %d, stderr %q", code, stderr.String())
 	}
 	if !strings.Contains(stdout.String(), "bash|zsh|fish") {

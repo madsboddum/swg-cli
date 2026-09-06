@@ -21,6 +21,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if name == "__complete" {
 		return runComplete(args[1:], stdout, stderr)
 	}
+	if isHelpFlag(name) {
+		printUsage(stdout)
+		return 0
+	}
 
 	cmd, ok := lookup(name)
 	if !ok {
@@ -29,5 +33,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	// Handled here rather than by each command's flag set, so that --help wins
+	// over any other argument and prints to stdout with a zero exit code.
+	for _, a := range args[1:] {
+		if isHelpFlag(a) {
+			printCommandUsage(stdout, cmd)
+			return 0
+		}
+	}
+
 	return cmd.run(args[1:], stdout, stderr)
+}
+
+func isHelpFlag(arg string) bool {
+	return arg == "-h" || arg == "-help" || arg == "--help"
 }

@@ -21,20 +21,9 @@ type command struct {
 var commands = []command{
 	{name: "cat", summary: "Write paths from the archives to standard output", run: runCat, usage: catUsage},
 	{name: "completion", summary: "Print a shell completion script", run: runCompletion, usage: completionUsage},
-	{name: "help", summary: "Show usage for swg or a subcommand"},
 	{name: "ls", summary: "List paths across the archives", run: runLs, usage: lsUsage},
 	{name: "version", summary: "Print the swg version", run: runVersion},
 	{name: "which", summary: "Show which archive a path is read from", run: runWhich, usage: whichUsage},
-}
-
-// runHelp reads commands, so wiring it in the literal above would be an
-// initialization cycle.
-func init() {
-	for i := range commands {
-		if commands[i].name == "help" {
-			commands[i].run = runHelp
-		}
-	}
 }
 
 func lookup(name string) (command, bool) {
@@ -56,5 +45,5 @@ func printUsage(w io.Writer) {
 	}
 	tw.Flush()
 
-	fmt.Fprint(w, "\nRun \"swg help <command>\" for details on a command.\n")
+	fmt.Fprint(w, "\nRun \"swg <command> --help\" for details on a command.\n")
 }

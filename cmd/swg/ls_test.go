@@ -151,7 +151,7 @@ func TestLsWithoutArchives(t *testing.T) {
 
 func TestHelpLsShowsTheLongUsage(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	if code := run([]string{"help", "ls"}, &stdout, &stderr); code != 0 {
+	if code := run([]string{"ls", "--help"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit code = %d, stderr %q", code, stderr.String())
 	}
 	if !strings.Contains(stdout.String(), "-archive") {

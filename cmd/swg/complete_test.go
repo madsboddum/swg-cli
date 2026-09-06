@@ -28,7 +28,7 @@ func TestComplete(t *testing.T) {
 		{
 			name: "flag names for cat",
 			args: []string{"cat", "-"},
-			want: []string{"-dir"},
+			want: []string{"-dir", "--help"},
 		},
 		{name: "archive name", args: []string{"ls", "-archive", "ba"}, want: []string{"base.tre"}},
 		{name: "dir flag falls back to the shell", args: []string{"ls", "-dir", "/tm"}, want: nil},

@@ -114,7 +114,7 @@ func TestWhichWithoutDirectoryConfigured(t *testing.T) {
 
 func TestHelpWhichShowsTheLongUsage(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	if code := run([]string{"help", "which"}, &stdout, &stderr); code != 0 {
+	if code := run([]string{"which", "--help"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit code = %d, stderr %q", code, stderr.String())
 	}
 	if !strings.Contains(stdout.String(), "-all") {

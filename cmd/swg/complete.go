@@ -8,12 +8,12 @@ import (
 	"github.com/madsboddum/swg-cli/archive"
 )
 
-// completionFlags lists each command's flags, in the order swg help shows
+// completionFlags lists each command's flags, in the order its usage shows
 // them, for offering as completion candidates.
 var completionFlags = map[string][]string{
-	"cat":   {"-dir"},
-	"ls":    {"-dir", "-archive"},
-	"which": {"-dir", "-all"},
+	"cat":   {"-dir", "--help"},
+	"ls":    {"-dir", "-archive", "--help"},
+	"which": {"-dir", "-all", "--help"},
 }
 
 // runComplete implements the hidden __complete command: args is the command
@@ -36,7 +36,7 @@ func runComplete(args []string, stdout, _ io.Writer) int {
 	switch words[0] {
 	case "cat", "ls", "which":
 		completeArchiveCommand(words[0], words[1:], cur, stdout)
-	case "help", "completion":
+	case "completion":
 		printMatches(stdout, candidateCommands(cur))
 	}
 	return 0
@@ -48,6 +48,9 @@ func candidateCommands(cur string) []string {
 		if strings.HasPrefix(c.name, cur) {
 			out = append(out, c.name)
 		}
+	}
+	if strings.HasPrefix("--help", cur) {
+		out = append(out, "--help")
 	}
 	return out
 }

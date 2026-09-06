@@ -161,7 +161,7 @@ func TestCatWithoutDirectoryConfigured(t *testing.T) {
 
 func TestHelpCatShowsTheLongUsage(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	if code := run([]string{"help", "cat"}, &stdout, &stderr); code != 0 {
+	if code := run([]string{"cat", "--help"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit code = %d, stderr %q", code, stderr.String())
 	}
 	if !strings.Contains(stdout.String(), "@file:key|value") {
