@@ -171,7 +171,8 @@ func readColumnTypesV0000(b []byte, count int) ([]Type, error) {
 // readColumnTypesV0001 reads count NUL-terminated type specs, the layout
 // version 0001 datatables use. A spec's first letter names the column's
 // storage type; everything after it (an enum's members, a default value)
-// only matters to a writer, not to reading the raw cells back.
+// only matters to a writer, not to reading the raw cells back. The letter's
+// case carries no meaning: shipped tables use either.
 func readColumnTypesV0001(b []byte, count int) ([]Type, error) {
 	types := make([]Type, count)
 	for i := range types {
@@ -184,7 +185,7 @@ func readColumnTypesV0001(b []byte, count int) ([]Type, error) {
 		if spec == "" {
 			return nil, fmt.Errorf("%w: TYPE spec %d is empty", ErrFormat, i)
 		}
-		switch spec[0] {
+		switch lower(spec[0]) {
 		case 'i', 'h', 'b', 'e', 'v':
 			types[i] = Int
 		case 'f':
@@ -196,6 +197,14 @@ func readColumnTypesV0001(b []byte, count int) ([]Type, error) {
 		}
 	}
 	return types, nil
+}
+
+// lower folds an ASCII letter to lower case.
+func lower(c byte) byte {
+	if c >= 'A' && c <= 'Z' {
+		return c + 'a' - 'A'
+	}
+	return c
 }
 
 // readRows reads the row count and that many records from a ROWS chunk, each

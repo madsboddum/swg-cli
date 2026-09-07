@@ -58,6 +58,40 @@ func TestDecodeReadsColumnsAndRows(t *testing.T) {
 	}
 }
 
+func TestDecodeAcceptsUppercaseTypeLetters(t *testing.T) {
+	root := &iff.Node{
+		Tag:  iff.FormTag,
+		Type: "DTII",
+		Children: []*iff.Node{{
+			Tag:  iff.FormTag,
+			Type: "0001",
+			Children: []*iff.Node{
+				{Tag: "COLS", Data: []byte("\x03\x00\x00\x00level\x00weight\x00name\x00")},
+				{Tag: "TYPE", Data: []byte("I\x00F\x00S\x00")},
+				{Tag: "ROWS", Data: []byte("\x01\x00\x00\x00\x07\x00\x00\x00\x00\x00\x20\x40womp rat\x00")},
+			},
+		}},
+	}
+
+	table, err := dtable.Decode(root)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	wantTypes := []dtable.Type{dtable.Int, dtable.Float, dtable.String}
+	for i, want := range wantTypes {
+		if table.Columns[i].Type != want {
+			t.Errorf("Columns[%d].Type = %v, want %v", i, table.Columns[i].Type, want)
+		}
+	}
+	if len(table.Rows) != 1 {
+		t.Fatalf("got %d rows, want 1", len(table.Rows))
+	}
+	row := table.Rows[0]
+	if row[0] != int32(7) || row[1] != float32(2.5) || row[2] != "womp rat" {
+		t.Errorf("Rows[0] = %+v, want [7 2.5 womp rat]", row)
+	}
+}
+
 func TestDecodeRejectsANonDatatableForm(t *testing.T) {
 	root := &iff.Node{Tag: iff.FormTag, Type: "TEST"}
 	if _, err := dtable.Decode(root); !errors.Is(err, dtable.ErrFormat) {
