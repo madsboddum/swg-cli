@@ -156,7 +156,20 @@ $ swg cat string/en/badge_n.stf | wc -l
 185
 ```
 
-Anything that is not a string table is written out as the bytes it holds, so extracting is a redirect:
+### Reading a palette
+
+```shell
+$ swg cat palette/creature_frog.pal
+index	hex	r	g	b
+0	#5d3534	93	53	52
+1	#6a3e3d	106	62	61
+2	#794a49	121	74	73
+...
+```
+
+On a terminal each line gets a swatch of the colour itself and the columns line up. Redirect the output, or pass `-color never`, for the tab-separated form above.
+
+Anything that is not a string table, a datatable or a palette is written out as the bytes it holds, so extracting is a redirect:
 
 ```shell
 $ swg cat texture/lambda_glass.dds > lambda_glass.dds

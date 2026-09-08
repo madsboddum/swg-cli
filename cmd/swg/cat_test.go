@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,6 +66,31 @@ func TestCat(t *testing.T) {
 			args: []string{"cat", "datatable/broken.iff"},
 			wantOut: "FORM DTII (16 bytes)\n" +
 				"  FORM 0001 (4 bytes)\n",
+		},
+		{
+			name: "a palette renders tab-separated when the output is not a terminal",
+			args: []string{"cat", "palette/frog.pal"},
+			wantOut: "index\thex\tr\tg\tb\n" +
+				"0\t#5d3534\t93\t53\t52\n" +
+				"1\t#ffffff\t255\t255\t255\n",
+		},
+		{
+			name: "-color always adds a swatch and aligns the columns",
+			args: []string{"cat", "-color", "always", "palette/frog.pal"},
+			wantOut: "    index  hex       r   g   b\n" +
+				"\x1b[48;2;93;53;52m  \x1b[0m      0  #5d3534  93  53  52\n" +
+				"\x1b[48;2;255;255;255m  \x1b[0m      1  #ffffff 255 255 255\n",
+		},
+		{
+			name:    "a malformed palette falls back to its bytes",
+			args:    []string{"cat", "palette/broken.pal"},
+			wantOut: "RIFF\x00\x00\x00\x00PAL nope",
+		},
+		{
+			name:     "an unknown -color value",
+			args:     []string{"cat", "-color", "sometimes", "palette/frog.pal"},
+			wantCode: 2,
+			wantErr:  `"sometimes" is not auto, always or never`,
 		},
 		{
 			name:    "the winning source is the one read",
@@ -159,6 +185,56 @@ func TestCatWithoutDirectoryConfigured(t *testing.T) {
 	}
 }
 
+func TestColorizeAutoFollowsTheWriterAndNoColor(t *testing.T) {
+	tty, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		t.Skipf("no character device to test against: %v", err)
+	}
+	defer func() { _ = tty.Close() }()
+
+	set := func(v string) *string { return &v }
+
+	tests := []struct {
+		name string
+		when string
+		w    io.Writer
+		// noColor is the value NO_COLOR holds, or nil for unset. An empty
+		// NO_COLOR still mutes, so the two cannot share a representation.
+		noColor *string
+		want    bool
+	}{
+		{name: "auto on a character device", when: "auto", w: tty, want: true},
+		{name: "auto on a pipe", when: "auto", w: &bytes.Buffer{}},
+		{name: "auto with NO_COLOR set", when: "auto", w: tty, noColor: set("1")},
+		{name: "auto with NO_COLOR empty", when: "auto", w: tty, noColor: set("")},
+		{name: "always on a pipe", when: "always", w: &bytes.Buffer{}, want: true},
+		{name: "never on a character device", when: "never", w: tty},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setenv first either way, so the cleanup it registers restores
+			// whatever the environment held.
+			t.Setenv("NO_COLOR", "")
+			if tt.noColor == nil {
+				if err := os.Unsetenv("NO_COLOR"); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				t.Setenv("NO_COLOR", *tt.noColor)
+			}
+
+			got, err := colorize(tt.when, tt.w)
+			if err != nil {
+				t.Fatalf("colorize: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("colorize(%q) = %v, want %v", tt.when, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestHelpCatShowsTheLongUsage(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{"cat", "--help"}, &stdout, &stderr); code != 0 {
@@ -188,6 +264,11 @@ func catFixture(t *testing.T) string {
 		"appearance/crate.apt":   string(iffBytes(t, "TEST", "NAME", "hello")),
 		"datatable/npc.iff":      string(dtableBytes(t)),
 		"datatable/broken.iff":   string(form("DTII", form("0001"))),
+		"palette/frog.pal": string(palBytes(t, []palEntry{
+			{0x5d, 0x35, 0x34},
+			{0xff, 0xff, 0xff},
+		})),
+		"palette/broken.pal": "RIFF\x00\x00\x00\x00PAL nope",
 	})
 
 	loose := filepath.Join(dir, "texture", "patched.dds")
@@ -277,6 +358,41 @@ func dtableBytes(t *testing.T) []byte {
 			chunk("ROWS", rows.Bytes()),
 		),
 	)
+}
+
+// palEntry is one colour of a palette fixture.
+type palEntry struct{ r, g, b uint8 }
+
+// palBytes builds a RIFF PAL palette holding entries.
+func palBytes(t *testing.T, entries []palEntry) []byte {
+	t.Helper()
+
+	var data bytes.Buffer
+	write := func(v any) {
+		if err := binary.Write(&data, binary.LittleEndian, v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(uint16(0x0300))
+	write(uint16(len(entries)))
+	for _, e := range entries {
+		data.Write([]byte{e.r, e.g, e.b, 0})
+	}
+
+	var body bytes.Buffer
+	body.WriteString("PAL data")
+	if err := binary.Write(&body, binary.LittleEndian, uint32(data.Len())); err != nil {
+		t.Fatal(err)
+	}
+	body.Write(data.Bytes())
+
+	var out bytes.Buffer
+	out.WriteString("RIFF")
+	if err := binary.Write(&out, binary.LittleEndian, uint32(body.Len())); err != nil {
+		t.Fatal(err)
+	}
+	out.Write(body.Bytes())
+	return out.Bytes()
 }
 
 // stfEntry is one key and value of a string table fixture.

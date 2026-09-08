@@ -11,7 +11,7 @@ import (
 // completionFlags lists each command's flags, in the order its usage shows
 // them, for offering as completion candidates.
 var completionFlags = map[string][]string{
-	"cat":   {"-dir", "--help"},
+	"cat":   {"-dir", "-color", "--help"},
 	"ls":    {"-dir", "-archive", "--help"},
 	"which": {"-dir", "-all", "--help"},
 }
@@ -73,6 +73,16 @@ func completeArchiveCommand(sub string, prior []string, cur string, stdout io.Wr
 			}
 		}
 		printMatches(stdout, names)
+		return
+	}
+	if len(prior) > 0 && prior[len(prior)-1] == "-color" {
+		var whens []string
+		for _, w := range []string{"auto", "always", "never"} {
+			if strings.HasPrefix(w, cur) {
+				whens = append(whens, w)
+			}
+		}
+		printMatches(stdout, whens)
 		return
 	}
 	if len(prior) > 0 && prior[len(prior)-1] == "-dir" {

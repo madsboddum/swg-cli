@@ -5,12 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	gopath "path"
 	"strings"
 
 	"github.com/madsboddum/swg-cli/archive"
 	"github.com/madsboddum/swg-cli/dtable"
 	"github.com/madsboddum/swg-cli/iff"
+	"github.com/madsboddum/swg-cli/pal"
 	"github.com/madsboddum/swg-cli/stf"
 )
 
@@ -39,10 +41,18 @@ A DTII datatable is instead printed one row per line, tab-separated, header
 row first. A malformed or unrecognised DTII falls back to the node tree. Pipe
 into "column -t -s $'\t'" for an aligned view on a terminal.
 
+Palettes are printed one colour per line as index, #rrggbb and the three
+channels, tab-separated, header row first. On a terminal each line is prefixed
+with a swatch of the colour itself and the columns are aligned; redirect the
+output, or pass -color never, for the tab-separated form.
+
 Every other file is written out as the bytes it holds.
 
   -dir directory
         directory holding the .tre archives; defaults to $SWG_DIR
+  -color when
+        colourise palettes: auto, always or never; auto means a terminal
+        that has not set NO_COLOR
 `
 
 func runCat(args []string, stdout, stderr io.Writer) int {
@@ -51,7 +61,13 @@ func runCat(args []string, stdout, stderr io.Writer) int {
 	fs.Usage = func() { fmt.Fprint(stderr, catUsage) }
 
 	dir := fs.String("dir", "", "directory holding the .tre archives")
+	when := fs.String("color", "auto", "colourise palettes: auto, always or never")
 	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	color, err := colorize(*when, stdout)
+	if err != nil {
+		fmt.Fprintf(stderr, "swg cat: %v\n", err)
 		return 2
 	}
 	operands := fs.Args()
@@ -73,6 +89,12 @@ func runCat(args []string, stdout, stderr io.Writer) int {
 	}
 	defer func() { _ = stack.Close() }()
 
+	return emitAll(stack, operands, stdout, stderr, color)
+}
+
+// emitAll writes every path each operand resolves to, reporting failures as it
+// goes and returning the exit code they add up to.
+func emitAll(stack *archive.Stack, operands []string, stdout, stderr io.Writer, color bool) int {
 	code := 0
 	for _, operand := range operands {
 		found, err := match(stack.Paths(), operand)
@@ -87,7 +109,7 @@ func runCat(args []string, stdout, stderr io.Writer) int {
 			continue
 		}
 		for _, p := range found {
-			if err := emit(stack, p, stdout); err != nil {
+			if err := emit(stack, p, stdout, color); err != nil {
 				fmt.Fprintf(stderr, "swg cat: %v\n", err)
 				code = 1
 			}
@@ -121,13 +143,21 @@ func match(paths []string, operand string) ([]string, error) {
 	return out, nil
 }
 
-// emit writes one file, decoding it first if it is a string table or an IFF
-// container.
+// emit writes one file, decoding it first if it is a string table, a palette
+// or an IFF container.
 // Why cat sniffs rather than being told the format: docs/decisions/0001-reading-sniffs-the-format.md
-func emit(stack *archive.Stack, path string, stdout io.Writer) error {
+func emit(stack *archive.Stack, path string, stdout io.Writer, color bool) error {
 	b, err := stack.ReadFile(path)
 	if err != nil {
 		return err
+	}
+
+	// A malformed palette degrades to its bytes rather than failing, the way a
+	// malformed DTII degrades to a node tree.
+	if pal.HasMagic(b) {
+		if palette, err := pal.Decode(b); err == nil {
+			return printPalette(stdout, palette, color)
+		}
 	}
 
 	if bytes.HasPrefix(b, []byte(iff.FormTag)) {
@@ -183,6 +213,72 @@ func printTable(w io.Writer, table *dtable.Table) error {
 		}
 	}
 	return nil
+}
+
+// colorize resolves the -color flag against the writer cat will print to.
+func colorize(when string, stdout io.Writer) (bool, error) {
+	switch when {
+	case "always":
+		return true, nil
+	case "never":
+		return false, nil
+	case "auto":
+		// NO_COLOR is honoured whatever its value, as its convention asks.
+		_, mute := os.LookupEnv("NO_COLOR")
+		return !mute && isTerminal(stdout), nil
+	default:
+		return false, fmt.Errorf("-color: %q is not auto, always or never", when)
+	}
+}
+
+// isTerminal reports whether w writes to a character device, which is as close
+// to a terminal test as the standard library gets.
+func isTerminal(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return info.Mode()&os.ModeCharDevice != 0
+}
+
+// printPalette writes a palette a header row first and then one colour per
+// line: the index, the colour as #rrggbb, then its three channels. The plain
+// form is tab-separated so it pipes into cut and awk the way datatable output
+// does; the coloured form prefixes a swatch and aligns the columns, which tabs
+// cannot do once an escape sequence has thrown the column count off.
+func printPalette(w io.Writer, p *pal.Palette, color bool) error {
+	if !color {
+		if _, err := fmt.Fprint(w, "index\thex\tr\tg\tb\n"); err != nil {
+			return err
+		}
+		for i, c := range p.Colors {
+			if _, err := fmt.Fprintf(w, "%d\t%s\t%d\t%d\t%d\n", i, c.Hex(), c.R, c.G, c.B); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// The four leading spaces stand in for the swatch column, which has no name.
+	if _, err := fmt.Fprintf(w, "    %5s  %-7s %3s %3s %3s\n", "index", "hex", "r", "g", "b"); err != nil {
+		return err
+	}
+	for i, c := range p.Colors {
+		if _, err := fmt.Fprintf(w, "%s  %5d  %-7s %3d %3d %3d\n", swatch(c), i, c.Hex(), c.R, c.G, c.B); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// swatch renders two spaces filled with c, using the 24 bit background colour
+// escape every terminal emulator worth the name has supported for a decade.
+func swatch(c pal.Color) string {
+	return fmt.Sprintf("\x1b[48;2;%d;%d;%dm  \x1b[0m", c.R, c.G, c.B)
 }
 
 // printTree writes n and its descendants as an indented tree: each node's
