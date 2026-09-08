@@ -11,9 +11,10 @@ import (
 // completionFlags lists each command's flags, in the order its usage shows
 // them, for offering as completion candidates.
 var completionFlags = map[string][]string{
-	"cat":   {"-dir", "-color", "--help"},
-	"ls":    {"-dir", "-archive", "--help"},
-	"which": {"-dir", "-all", "--help"},
+	"cat":     {"-dir", "-color", "--help"},
+	"extract": {"-dir", "-C", "-archive", "-q", "--help"},
+	"ls":      {"-dir", "-archive", "--help"},
+	"which":   {"-dir", "-all", "--help"},
 }
 
 // runComplete implements the hidden __complete command: args is the command
@@ -34,7 +35,7 @@ func runComplete(args []string, stdout, _ io.Writer) int {
 	}
 
 	switch words[0] {
-	case "cat", "ls", "which":
+	case "cat", "extract", "ls", "which":
 		completeArchiveCommand(words[0], words[1:], cur, stdout)
 	case "completion":
 		printMatches(stdout, candidateCommands(cur))
@@ -55,9 +56,9 @@ func candidateCommands(cur string) []string {
 	return out
 }
 
-// completeArchiveCommand completes the arguments of cat, ls, and which: their
-// flags, -archive's values, and paths inside the archives. -dir is left to
-// the shell's own directory completion.
+// completeArchiveCommand completes the arguments of cat, extract, ls, and
+// which: their flags, -archive's values, and paths inside the archives. The
+// directory flags are left to the shell's own directory completion.
 func completeArchiveCommand(sub string, prior []string, cur string, stdout io.Writer) {
 	if len(prior) > 0 && prior[len(prior)-1] == "-archive" {
 		stack, err := archive.Open(completionDir(prior))
@@ -85,7 +86,7 @@ func completeArchiveCommand(sub string, prior []string, cur string, stdout io.Wr
 		printMatches(stdout, whens)
 		return
 	}
-	if len(prior) > 0 && prior[len(prior)-1] == "-dir" {
+	if len(prior) > 0 && (prior[len(prior)-1] == "-dir" || prior[len(prior)-1] == "-C") {
 		return
 	}
 

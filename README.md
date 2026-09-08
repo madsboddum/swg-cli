@@ -169,10 +169,29 @@ index	hex	r	g	b
 
 On a terminal each line gets a swatch of the colour itself and the columns line up. Redirect the output, or pass `-color never`, for the tab-separated form above.
 
-Anything that is not a string table, a datatable or a palette is written out as the bytes it holds, so extracting is a redirect:
+Anything that is not a string table, a datatable or a palette is written out as the bytes it holds, so pulling one file out is a redirect:
 
 ```shell
 $ swg cat texture/lambda_glass.dds > lambda_glass.dds
+```
+
+### Extracting a tree onto disk
+
+`extract` is the other half of `cat`: it resolves paths the same way, then writes them out as files rather than to standard output. `-C` says where they land and the archive path becomes directories below it.
+
+```shell
+$ swg extract -C ./out 'string/en/**.stf'
+string/en/badge_d.stf
+string/en/badge_n.stf
+...
+```
+
+Bytes are written exactly as stored, whatever the format, so nothing is decoded and an existing file is overwritten. Each path is printed as it is written, so the output is a manifest of what landed on disk; `-q` silences it.
+
+`-archive` extracts everything one archive holds, ignoring precedence:
+
+```shell
+$ swg extract -C ./out -archive patch_02.tre
 ```
 
 ### Which archive a path comes from
@@ -211,6 +230,7 @@ The `@file:key|value` output format carries over from the stf tool, minus the `.
 | Command | Purpose |
 | --- | --- |
 | `cat` | Write paths from the archives to standard output |
+| `extract` | Write paths from the archives out as files |
 | `ls` | List paths across the archives |
 | `which` | Show which archive a path is read from |
 | `version` | Print the version |

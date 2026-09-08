@@ -21,6 +21,7 @@ type command struct {
 var commands = []command{
 	{name: "cat", summary: "Write paths from the archives to standard output", run: runCat, usage: catUsage},
 	{name: "completion", summary: "Print a shell completion script", run: runCompletion, usage: completionUsage},
+	{name: "extract", summary: "Write paths from the archives out as files", run: runExtract, usage: extractUsage},
 	{name: "ls", summary: "List paths across the archives", run: runLs, usage: lsUsage},
 	{name: "version", summary: "Print the swg version", run: runVersion},
 	{name: "which", summary: "Show which archive a path is read from", run: runWhich, usage: whichUsage},

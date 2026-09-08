@@ -68,7 +68,7 @@ _swg_complete() {
     local cur=${COMP_WORDS[COMP_CWORD]}
     local prev=${COMP_WORDS[COMP_CWORD-1]}
 
-    if [[ $prev == "-dir" ]]; then
+    if [[ $prev == "-dir" || $prev == "-C" ]]; then
         COMPREPLY=($(compgen -d -- "$cur"))
         return
     fi
@@ -98,7 +98,7 @@ _swg() {
     local -a words_after
     words_after=("${(@)words[2,CURRENT]}")
 
-    if [[ ${words_after[-2]} == "-dir" ]]; then
+    if [[ ${words_after[-2]} == "-dir" || ${words_after[-2]} == "-C" ]]; then
         _path_files -/
         return
     fi
