@@ -229,7 +229,7 @@ The `@file:key|value` output format carries over from the stf tool, minus the `.
 
 | Command | Purpose |
 | --- | --- |
-| `cat` | Write paths from the archives to standard output |
+| `cat` | Decode paths from the archives into readable text |
 | `extract` | Write paths from the archives out as files |
 | `ls` | List paths across the archives |
 | `which` | Show which archive a path is read from |
