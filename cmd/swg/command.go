@@ -19,7 +19,7 @@ type command struct {
 // commands is the dispatch table, in the order help lists them. Every entry is
 // a verb and none is a format name: docs/decisions/0002-commands-are-verbs.md
 var commands = []command{
-	{name: "cat", summary: "Decode paths from the archives into readable text", run: runCat, usage: catUsage},
+	{name: "cat", summary: "Write paths from the archives to standard output", run: runCat, usage: catUsage},
 	{name: "completion", summary: "Print a shell completion script", run: runCompletion, usage: completionUsage},
 	{name: "extract", summary: "Write paths from the archives out as files", run: runExtract, usage: extractUsage},
 	{name: "ls", summary: "List paths across the archives", run: runLs, usage: lsUsage},
