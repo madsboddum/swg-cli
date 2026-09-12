@@ -18,9 +18,13 @@ import (
 
 const catUsage = `usage: swg cat [-dir directory] path...
 
-Write the contents of paths from the archives to standard output. A path
-present in several archives is read from the one that wins, loose files
-first and then the highest numbered patch.
+Decode paths from the archives into readable text on standard output. An
+IFF container prints as an indented node tree, a DTII datatable as a
+tab-separated table, a .stf string table as one @file:key|value per line
+and a .pal palette as an index, hex and rgb table. Anything else is
+written out unchanged, as the bytes it holds. A path present in several
+archives is read from the one that wins, loose files first and then the
+highest numbered patch.
 
 Patterns may use * and ? within a path segment and ** across segments, so
 one invocation can concatenate a whole tree of files. Quote them, or the
@@ -45,8 +49,6 @@ Palettes are printed one colour per line as index, #rrggbb and the three
 channels, tab-separated, header row first. On a terminal each line is prefixed
 with a swatch of the colour itself and the columns are aligned; redirect the
 output, or pass -color never, for the tab-separated form.
-
-Every other file is written out as the bytes it holds.
 
   -dir directory
         directory holding the .tre archives; defaults to $SWG_DIR
