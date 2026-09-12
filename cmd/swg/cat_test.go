@@ -68,6 +68,22 @@ func TestCat(t *testing.T) {
 				"  FORM 0001 (4 bytes)\n",
 		},
 		{
+			name: "a portal object renders as cells and the portals between them",
+			args: []string{"cat", "appearance/hut.pob"},
+			wantOut: "cell\tname\tappearance\tfloor\tlights\n" +
+				"0\tshell\tshell.msh\t\t0\n" +
+				"1\troom\troom.msh\troom.flr\t1\n" +
+				"\ncell\tportal\ttarget\tpassable\tdisabled\tclockwise\tdoor\tvertices\tx\ty\tz\n" +
+				"0\t0\t1\ttrue\tfalse\ttrue\t\t4\t1.00\t1.50\t0.00\n" +
+				"1\t0\t0\tfalse\tfalse\tfalse\tdoor_hut\t4\t1.00\t1.50\t0.00\n",
+		},
+		{
+			name: "a malformed portal object falls back to the node tree",
+			args: []string{"cat", "appearance/broken.pob"},
+			wantOut: "FORM PRTO (16 bytes)\n" +
+				"  FORM 0003 (4 bytes)\n",
+		},
+		{
 			name: "a palette renders tab-separated when the output is not a terminal",
 			args: []string{"cat", "palette/frog.pal"},
 			wantOut: "index\thex\tr\tg\tb\n" +
@@ -264,6 +280,8 @@ func catFixture(t *testing.T) string {
 		"appearance/crate.apt":   string(iffBytes(t, "TEST", "NAME", "hello")),
 		"datatable/npc.iff":      string(dtableBytes(t)),
 		"datatable/broken.iff":   string(form("DTII", form("0001"))),
+		"appearance/hut.pob":     string(pobBytes(t)),
+		"appearance/broken.pob":  string(form("PRTO", form("0003"))),
 		"palette/frog.pal": string(palBytes(t, []palEntry{
 			{0x5d, 0x35, 0x34},
 			{0xff, 0xff, 0xff},
@@ -356,6 +374,80 @@ func dtableBytes(t *testing.T) []byte {
 			chunk("COLS", cstrings("level", "name")),
 			chunk("TYPE", []byte("i\x00s\x00")),
 			chunk("ROWS", rows.Bytes()),
+		),
+	)
+}
+
+// pobBytes builds a version 0003 PRTO portal object: one portal polygon and
+// two cells joined through it, the second behind a door.
+func pobBytes(t *testing.T) []byte {
+	t.Helper()
+
+	le := func(vs ...any) []byte {
+		var buf bytes.Buffer
+		for _, v := range vs {
+			if err := binary.Write(&buf, binary.LittleEndian, v); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return buf.Bytes()
+	}
+	// quad is a two by three opening in the x/y plane, so its centre is 1, 1.5, 0.
+	quad := le(int32(4),
+		float32(0), float32(0), float32(0),
+		float32(2), float32(0), float32(0),
+		float32(2), float32(3), float32(0),
+		float32(0), float32(3), float32(0))
+
+	// cell is a version 0005 DATA chunk: portal count, parent visibility, name,
+	// appearance, then the floor behind a flag.
+	cell := func(name, appearance, floor string) []byte {
+		var buf bytes.Buffer
+		buf.Write(le(int32(1), byte(0)))
+		buf.WriteString(name + "\x00" + appearance + "\x00")
+		if floor == "" {
+			buf.WriteByte(0)
+			return buf.Bytes()
+		}
+		buf.WriteByte(1)
+		buf.WriteString(floor + "\x00")
+		return buf.Bytes()
+	}
+
+	// lights is a LGHT chunk: a count, then that many light records of 93
+	// bytes, which cat counts rather than decodes.
+	lights := func(n int) []byte {
+		return append(le(int32(n)), make([]byte, 93*n)...)
+	}
+
+	// portal is a version 0004 cell portal: passable, geometry, winding, target,
+	// door, then the door's hardpoint flag and transform, which cat ignores.
+	portal := func(passable byte, clockwise byte, target int32, door string) []byte {
+		var buf bytes.Buffer
+		buf.Write(le(passable, int32(0), clockwise, target))
+		buf.WriteString(door + "\x00")
+		buf.WriteByte(0)
+		buf.Write(make([]byte, 48))
+		return buf.Bytes()
+	}
+
+	return form("PRTO",
+		form("0003",
+			chunk("DATA", le(int32(1), int32(2))),
+			form("PRTS", chunk("PRTL", quad)),
+			form("CELS",
+				form("CELL", form("0005",
+					chunk("DATA", cell("shell", "shell.msh", "")),
+					form("PRTL", chunk("0004", portal(1, 1, 1, ""))),
+					chunk("LGHT", lights(0)),
+				)),
+				form("CELL", form("0005",
+					chunk("DATA", cell("room", "room.msh", "room.flr")),
+					form("PRTL", chunk("0004", portal(0, 0, 0, "door_hut"))),
+					chunk("LGHT", lights(1)),
+				)),
+			),
+			chunk("CRC ", le(uint32(1))),
 		),
 	)
 }

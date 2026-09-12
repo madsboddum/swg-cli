@@ -13,6 +13,7 @@ import (
 	"github.com/madsboddum/swg-cli/dtable"
 	"github.com/madsboddum/swg-cli/iff"
 	"github.com/madsboddum/swg-cli/pal"
+	"github.com/madsboddum/swg-cli/pob"
 	"github.com/madsboddum/swg-cli/stf"
 )
 
@@ -20,11 +21,12 @@ const catUsage = `usage: swg cat [-dir directory] path...
 
 Decode paths from the archives into readable text on standard output. An
 IFF container prints as an indented node tree, a DTII datatable as a
-tab-separated table, a .stf string table as one @file:key|value per line
-and a .pal palette as an index, hex and rgb table. Anything else is
-written out unchanged, as the bytes it holds. A path present in several
-archives is read from the one that wins, loose files first and then the
-highest numbered patch.
+tab-separated table, a .stf string table as one @file:key|value per line,
+a .pal palette as an index, hex and rgb table and a .pob portal object as
+its cells and the portals between them. Anything else is written out
+unchanged, as the bytes it holds. A path present in several archives is
+read from the one that wins, loose files first and then the highest
+numbered patch.
 
 Patterns may use * and ? within a path segment and ** across segments, so
 one invocation can concatenate a whole tree of files. Quote them, or the
@@ -44,6 +46,13 @@ the name.
 A DTII datatable is instead printed one row per line, tab-separated, header
 row first. A malformed or unrecognised DTII falls back to the node tree. Pipe
 into "column -t -s $'\t'" for an aligned view on a terminal.
+
+A portal object, the interior of a building a player can walk inside, prints
+as two tables: one line per cell, then one line per portal out of a cell. A
+portal's x, y and z are the centre of the opening in the building's own
+coordinates, which is where the door between the two cells stands:
+
+    swg cat appearance/thm_newbie_hall.pob
 
 Palettes are printed one colour per line as index, #rrggbb and the three
 channels, tab-separated, header row first. On a terminal each line is prefixed
@@ -163,16 +172,7 @@ func emit(stack *archive.Stack, path string, stdout io.Writer, color bool) error
 	}
 
 	if bytes.HasPrefix(b, []byte(iff.FormTag)) {
-		root, err := iff.Parse(b)
-		if err != nil {
-			return fmt.Errorf("%s: %w", path, err)
-		}
-		if root.IsForm() && root.Type == dtable.FormType {
-			if table, err := dtable.Decode(root); err == nil {
-				return printTable(stdout, table)
-			}
-		}
-		return printTree(stdout, root, 0)
+		return emitContainer(stdout, path, b)
 	}
 
 	if !strings.EqualFold(gopath.Ext(path), ".stf") {
@@ -191,6 +191,30 @@ func emit(stack *archive.Stack, path string, stdout io.Writer, color bool) error
 		}
 	}
 	return nil
+}
+
+// emitContainer writes an IFF container, decoding it whole when its root form
+// is one of the formats built on top of the container. A form this knows but
+// cannot decode degrades to its node tree, the way a malformed palette
+// degrades to its bytes.
+func emitContainer(w io.Writer, path string, b []byte) error {
+	root, err := iff.Parse(b)
+	if err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	if root.IsForm() {
+		switch root.Type {
+		case dtable.FormType:
+			if table, err := dtable.Decode(root); err == nil {
+				return printTable(w, table)
+			}
+		case pob.FormType:
+			if layout, err := pob.Decode(root); err == nil {
+				return printLayout(w, layout)
+			}
+		}
+	}
+	return printTree(w, root, 0)
 }
 
 // printTable writes a datatable one row per line, tab-separated, header row
@@ -212,6 +236,39 @@ func printTable(w io.Writer, table *dtable.Table) error {
 		}
 		if _, err := fmt.Fprintln(w, strings.Join(cells, "\t")); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// printLayout writes a portal object as two tab-separated tables, cells first
+// and then the portals between them, each with a header row. Two tables rather
+// than one because a cell with no portals would otherwise not be printed at
+// all, and the pair reads as the graph the file describes.
+func printLayout(w io.Writer, l *pob.Layout) error {
+	if _, err := fmt.Fprint(w, "cell\tname\tappearance\tfloor\tlights\n"); err != nil {
+		return err
+	}
+	for i, c := range l.Cells {
+		if _, err := fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\n", i, c.Name, c.Appearance, c.Floor, c.Lights); err != nil {
+			return err
+		}
+	}
+
+	if _, err := fmt.Fprint(w, "\ncell\tportal\ttarget\tpassable\tdisabled\tclockwise\tdoor\tvertices\tx\ty\tz\n"); err != nil {
+		return err
+	}
+	for i, c := range l.Cells {
+		for _, p := range c.Portals {
+			// Decode has already checked the index, so the geometry is there.
+			geometry := l.Portals[p.Portal]
+			center := geometry.Center()
+			_, err := fmt.Fprintf(w, "%d\t%d\t%d\t%t\t%t\t%t\t%s\t%d\t%.2f\t%.2f\t%.2f\n",
+				i, p.Portal, p.Target, p.Passable, p.Disabled, p.Clockwise, p.Door,
+				len(geometry.Vertices), center.X, center.Y, center.Z)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

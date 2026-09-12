@@ -169,7 +169,27 @@ index	hex	r	g	b
 
 On a terminal each line gets a swatch of the colour itself and the columns line up. Redirect the output, or pass `-color never`, for the tab-separated form above.
 
-Anything that is not a string table, a datatable or a palette is written out as the bytes it holds, so pulling one file out is a redirect:
+### Reading the inside of a building
+
+A `.pob` portal object is the interior of anything a player can walk inside: the cells it is divided into and the portals between them. It prints as two tables, cells first:
+
+```shell
+$ swg cat appearance/thm_newbie_hall.pob
+cell	name	appearance	floor	lights
+0	r0	appearance/mesh/thm_newbie_hall_r0_mesh_r0.msh	appearance/collision/thm_newbie_hall_r0_floor0.flr	0
+1	r1	appearance/mesh/thm_newbie_hall_r1_mesh_r1.msh	appearance/collision/thm_newbie_hall_r1_collision_floor0.flr	7
+...
+
+cell	portal	target	passable	disabled	clockwise	door	vertices	x	y	z
+0	0	13	true	false	true		4	52.88	17.46	-415.95
+1	1	2	true	false	true		4	0.00	3.50	-28.00
+1	2	12	false	false	true		4	-12.07	3.08	-3.01
+...
+```
+
+Each portal is listed from both sides, once per cell it joins, and its `x`, `y` and `z` are the centre of the opening in the building's own coordinates.
+
+Anything that is not a string table, a datatable, a palette or a portal object is written out as the bytes it holds, so pulling one file out is a redirect:
 
 ```shell
 $ swg cat texture/lambda_glass.dds > lambda_glass.dds
