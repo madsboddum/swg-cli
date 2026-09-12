@@ -13,11 +13,13 @@ Types in common use here:
 - `feat:` — a new user-facing capability
 - `fix:` — a bug fix
 - `chore:` — tooling, CI, dependencies, housekeeping
-- `docs:` — documentation only
+- `docs:` — repo prose only: README, this file, ADRs, code comments
 - `refactor:` — behaviour-preserving code changes
 - `test:` — tests only
 
 The rest of the Angular set — `perf`, `build`, `ci`, `style`, `revert` — is accepted too. Anything outside it is rejected.
+
+Text the binary itself prints is not `docs:`. Usage strings, subcommand summaries, error messages and completion output ship to users as part of a release, so they are `feat:` when they say something new and `fix:` when they said it wrongly. Reword a misleading `--help` under `fix:`. Only prose that stays in the repo is `docs:`.
 
 Scope is the package or subcommand, e.g. `feat(tre): add extract subcommand`.
 

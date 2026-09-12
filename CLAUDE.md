@@ -25,6 +25,8 @@ Non-Go tools are pinned in `mise.toml`. Do not add `tool` directives to `go.mod`
 
 Conventional Commits — `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`. Scope is the package or subcommand, e.g. `feat(tre): add extract subcommand`. Release changelogs are generated from these prefixes.
 
+`docs:` is for repo prose only — README, CONTRIBUTING, ADRs, code comments. Text the binary prints (usage strings, command summaries, error messages) ships in a release, so it is `feat:` or `fix:`, never `docs:`. A `docs:` commit is dropped from the changelog entirely.
+
 When the work comes from an issue, add a `Refs: #N` footer, or `Closes: #N` on the commit that finishes it.
 
 A `commit-msg` hook enforces this with `cog verify`, and a `pre-push` hook runs `mise run verify`. Both are wired by `mise install`. Do not pass `--no-verify` to work around a failing hook; fix the message or the code.
