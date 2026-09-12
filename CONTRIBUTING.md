@@ -65,7 +65,9 @@ Merge to `main` and wait for the night. That is the whole process.
 
 `.github/workflows/tag.yml` runs `cog bump --auto` on a nightly schedule. Cocogitto reads the commits since the last tag and picks the next version from their prefixes — `feat:` bumps the minor, `fix:` the patch, a `BREAKING CHANGE:` footer the major — then tags `main` and pushes the tag. A day's merges ship as one release rather than one release each.
 
-A night with nothing but `docs:`, `chore:`, `ci:` and the like is not a release, and neither is a night with no merges at all. `cog` tags nothing and exits cleanly, and the release job is skipped. That exemption is cocogitto's own rule, not a pattern match in the workflow, so `feat!:` and breaking-change footers are read correctly.
+A night with nothing but `docs:`, `chore:`, `ci:` and the like is not a release. `cog` tags nothing and exits cleanly, and the release job is skipped. That exemption is cocogitto's own rule, not a pattern match in the workflow, so `feat!:` and breaking-change footers are read correctly.
+
+A night with no merges at all is handled by the workflow instead, not by `cog`. Asked to bump a `main` that has not moved since its last tag, `cog` bumps anyway and pushes the new tag, so the job checks whether `HEAD` already carries one and stops before calling it. A forced `level` skips that check, which is the one way to deliberately put a second tag on a released commit.
 
 To release without waiting, run the **Tag** workflow from the Actions tab. Its `level` input defaults to `auto`, the same choice the schedule makes; set it to `patch`, `minor` or `major` to force a version no commit warrants.
 

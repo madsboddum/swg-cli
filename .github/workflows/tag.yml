@@ -44,19 +44,32 @@ jobs:
         env:
           LEVEL: ${{ inputs.level || 'auto' }}
         run: |
-          before=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          # cog bumps and pushes a tag even when nothing has landed since the
+          # last one, so a nightly run on an unchanged main walks the version
+          # upwards forever. HEAD already carrying a tag is exactly that case.
+          # Stop before cog runs; a forced dispatch may still re-tag on purpose.
+          if existing=$(git describe --exact-match --tags HEAD 2>/dev/null); then
+            if [ "$LEVEL" = auto ]; then
+              echo "tagged=false" >> "$GITHUB_OUTPUT"
+              echo "HEAD is already released as $existing."
+              exit 0
+            fi
+            echo "HEAD is already released as $existing; forcing a $LEVEL bump."
+          fi
+
+          before=$(git tag --points-at HEAD | wc -l)
           cog bump "--$LEVEL"
           # cog exits 0 without tagging when nothing since the last tag is a
-          # feat, fix or breaking change, so ask the tags themselves. A nightly
-          # run usually finds HEAD already carrying the last release's tag, so
-          # compare against the tag from before the bump rather than just
-          # looking for one.
-          tag=$(git describe --tags --abbrev=0 2>/dev/null || true)
-          if [ -z "$tag" ] || [ "$tag" = "$before" ]; then
+          # feat, fix or breaking change, so ask the tags themselves. Count the
+          # tags on HEAD rather than naming one: git describe resolves several
+          # tags on one commit to an arbitrary member, not the newest, which is
+          # what kept the runaway above out of this job's output.
+          if [ "$(git tag --points-at HEAD | wc -l)" = "$before" ]; then
             echo "tagged=false" >> "$GITHUB_OUTPUT"
-            echo "No releasable commits since $before."
+            echo "No releasable commits."
             exit 0
           fi
+          tag=$(git tag --points-at HEAD --sort=-v:refname | head -1)
           # Only release a tag the remote actually has; GoReleaser publishes
           # against origin, so a post-bump hook that failed to push must not
           # look like a successful release.
