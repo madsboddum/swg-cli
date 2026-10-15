@@ -14,6 +14,7 @@ Where a decision governs specific code, that code carries a one-line comment poi
 | [0002](0002-commands-are-verbs.md) | Top-level commands are verbs, format is a flag |
 | [0003](0003-no-in-place-editing.md) | Writing produces a new archive; no in-place editing |
 | [0004](0004-command-vocabulary.md) | Command vocabulary: `cat`, `extract`, `pack` |
+| [0005](0005-rendering-stays-close-to-the-bytes.md) | Rendering stays close to what is stored |
 
 ## Template
 

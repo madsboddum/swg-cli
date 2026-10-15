@@ -15,6 +15,8 @@ Individual steps exist as `mise run fmt`, `vet`, `lint`, `test`, `build`.
 
 Subcommands are entries in the `commands` table in `cmd/swg/command.go`, each with a `run(args []string, stdout, stderr io.Writer) int`. Return an exit code; do not call `os.Exit` outside `main`.
 
+Rendering shows what a file stores, not what it means: label and lay out, never resolve or normalise values. See `docs/decisions/0005-rendering-stays-close-to-the-bytes.md`.
+
 ## Tooling
 
 The Go version lives in `go.mod`'s `toolchain` directive and nowhere else. Never set `GOTOOLCHAIN=local` — it disables the automatic fetch of the pinned toolchain.
