@@ -189,6 +189,50 @@ cell	portal	target	passable	disabled	clockwise	door	vertices	x	y	z
 
 Each portal is listed from both sides, once per cell it joins, and its `x`, `y` and `z` are the centre of the opening in the building's own coordinates.
 
+### Reading an object template
+
+The files under `object/` are object templates: what the client knows about an item, a creature, a building or a draft schematic. Each is a stack of layers, one per class in the client's template hierarchy, and prints most specific first, with the parameters each layer sets. A list of structs, like a draft schematic's attribute ranges, gets one line per struct:
+
+```shell
+$ swg cat object/draft_schematic/weapon/shared_pistol_blaster_cdef.iff
+SDSC (draft schematic) 0003, derived from object/draft_schematic/base/shared_base_draft_schematic.iff
+  slots:
+    name=@craft_weapon_ingredients_n:frame_assembly hardpoint=""
+    ...
+  attributes:
+    name=@crafting:minDamage experiment=@crafting:expDamage value=17..34
+    name=@crafting:maxDamage experiment=@crafting:expDamage value=51..67
+    ...
+  craftedSharedTemplate = "object/weapon/ranged/pistol/shared_pistol_cdef.iff"
+
+SITN (intangible) 0000, derived from object/draft_schematic/base/shared_base_draft_schematic.iff
+  (nothing set)
+
+SHOT (object) 0010, derived from object/draft_schematic/base/shared_base_draft_schematic.iff
+  (nothing set)
+```
+
+Parameters a template leaves unset are left out, since the value comes from the parent it derives from. What is set prints as stored: string ids stay string ids rather than the text they name, and `@:` is an empty one.
+
+### Reading the raw bytes
+
+`-format hex` skips the decoding above and dumps the bytes, sixteen to a line as an offset, hex and ASCII. An IFF container keeps its node tree, with each chunk dumped in full beneath it and offsets counted from the start of the chunk. It is the view to work from when a form is not decoded yet:
+
+```shell
+$ swg cat -format hex object/draft_schematic/weapon/shared_pistol_blaster_cdef.iff
+FORM SDSC (2825 bytes)
+  FORM DERV (72 bytes)
+    XXXX (60 bytes)
+      00000000  6f 62 6a 65 63 74 2f 64  72 61 66 74 5f 73 63 68  object/draft_sch
+      00000010  65 6d 61 74 69 63 2f 62  61 73 65 2f 73 68 61 72  ematic/base/shar
+      00000020  65 64 5f 62 61 73 65 5f  64 72 61 66 74 5f 73 63  ed_base_draft_sc
+      00000030  68 65 6d 61 74 69 63 2e  69 66 66 00              hematic.iff.
+  FORM 0003 (1913 bytes)
+    PCNT (4 bytes)
+      00000000  03 00 00 00                                       ....
+...
+```
+
 Anything that is not a string table, a datatable, a palette or a portal object is written out as the bytes it holds, so pulling one file out is a redirect:
 
 ```shell

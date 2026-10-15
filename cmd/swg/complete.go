@@ -11,10 +11,17 @@ import (
 // completionFlags lists each command's flags, in the order its usage shows
 // them, for offering as completion candidates.
 var completionFlags = map[string][]string{
-	"cat":     {"-dir", "-color", "--help"},
+	"cat":     {"-dir", "-color", "-format", "--help"},
 	"extract": {"-dir", "-C", "-archive", "-q", "--help"},
 	"ls":      {"-dir", "-archive", "--help"},
 	"which":   {"-dir", "-all", "--help"},
+}
+
+// flagValues lists the fixed values a flag takes, for offering as completion
+// candidates once the flag has been typed.
+var flagValues = map[string][]string{
+	"-color":  {"auto", "always", "never"},
+	"-format": {"pretty", "hex"},
 }
 
 // runComplete implements the hidden __complete command: args is the command
@@ -76,28 +83,18 @@ func completeArchiveCommand(sub string, prior []string, cur string, stdout io.Wr
 		printMatches(stdout, names)
 		return
 	}
-	if len(prior) > 0 && prior[len(prior)-1] == "-color" {
-		var whens []string
-		for _, w := range []string{"auto", "always", "never"} {
-			if strings.HasPrefix(w, cur) {
-				whens = append(whens, w)
-			}
+	if len(prior) > 0 {
+		if values, ok := flagValues[prior[len(prior)-1]]; ok {
+			printMatches(stdout, withPrefix(values, cur))
+			return
 		}
-		printMatches(stdout, whens)
-		return
 	}
 	if len(prior) > 0 && (prior[len(prior)-1] == "-dir" || prior[len(prior)-1] == "-C") {
 		return
 	}
 
 	if strings.HasPrefix(cur, "-") {
-		var flags []string
-		for _, f := range completionFlags[sub] {
-			if strings.HasPrefix(f, cur) {
-				flags = append(flags, f)
-			}
-		}
-		printMatches(stdout, flags)
+		printMatches(stdout, withPrefix(completionFlags[sub], cur))
 		return
 	}
 
@@ -152,6 +149,17 @@ func flagValue(words []string, name string) string {
 		}
 	}
 	return ""
+}
+
+// withPrefix returns the candidates starting with cur.
+func withPrefix(candidates []string, cur string) []string {
+	var out []string
+	for _, c := range candidates {
+		if strings.HasPrefix(c, cur) {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 func printMatches(w io.Writer, matches []string) {

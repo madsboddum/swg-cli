@@ -84,6 +84,57 @@ func TestCat(t *testing.T) {
 				"  FORM 0003 (4 bytes)\n",
 		},
 		{
+			name: "an object template renders its layers and the parameters they set",
+			args: []string{"cat", "object/draft_schematic/pistol.iff"},
+			wantOut: "SDSC (draft schematic) 0003, derived from object/draft_schematic/base.iff\n" +
+				"  attributes:\n" +
+				"    name=@crafting:minDamage value=17..34\n" +
+				"  craftedSharedTemplate = \"object/weapon/pistol.iff\"\n" +
+				"\n" +
+				"SITN (intangible) 0000\n" +
+				"  (nothing set)\n" +
+				"\n" +
+				"SHOT (object) 0010\n" +
+				"  objectName = @weapon_name:pistol\n",
+		},
+		{
+			name: "an object template with an unknown parameter falls back to the node tree",
+			args: []string{"cat", "object/broken.iff"},
+			wantOut: "FORM SHOT (39 bytes)\n" +
+				"  FORM 0010 (27 bytes)\n" +
+				"    PCNT (4 bytes): 01 00 00 00  ....\n" +
+				"    XXXX (3 bytes): 6e 6f 00  no.\n",
+		},
+		{
+			name: "-format hex dumps every chunk of a container in full",
+			args: []string{"cat", "-format", "hex", "datatable/npc.iff"},
+			wantOut: "FORM DTII (76 bytes)\n" +
+				"  FORM 0001 (64 bytes)\n" +
+				"    COLS (15 bytes)\n" +
+				"      00000000  02 00 00 00 6c 65 76 65  6c 00 6e 61 6d 65 00     ....level.name.\n" +
+				"    TYPE (4 bytes)\n" +
+				"      00000000  69 00 73 00                                       i.s.\n" +
+				"    ROWS (17 bytes)\n" +
+				"      00000000  01 00 00 00 05 00 00 00  77 6f 6d 70 20 72 61 74  ........womp rat\n" +
+				"      00000010  00                                                .\n",
+		},
+		{
+			name:    "-format hex dumps a file that is not a container",
+			args:    []string{"cat", "-format", "hex", "texture/crate.dds"},
+			wantOut: "00000000  72 61 77 20 63 72 61 74  65 20 62 79 74 65 73     raw crate bytes\n",
+		},
+		{
+			name:    "-format hex dumps a malformed container flat",
+			args:    []string{"cat", "-format", "hex", "bad/form.iff"},
+			wantOut: "00000000  46 4f 52 4d 00 00 00 ff                           FORM....\n",
+		},
+		{
+			name:     "an unknown -format value",
+			args:     []string{"cat", "-format", "xml", "datatable/npc.iff"},
+			wantCode: 2,
+			wantErr:  `"xml" is not pretty or hex`,
+		},
+		{
 			name: "a palette renders tab-separated when the output is not a terminal",
 			args: []string{"cat", "palette/frog.pal"},
 			wantOut: "index\thex\tr\tg\tb\n" +
@@ -272,16 +323,22 @@ func catFixture(t *testing.T) string {
 			{"disturbance", "You feel a disturbance in the Force."},
 			{"cover", "You take cover."},
 		})),
-		"string/en/sub/deep.stf": string(stfBytes(t, []stfEntry{{"label", "Inventory"}})),
-		"other/stray.stf":        string(stfBytes(t, []stfEntry{{"label", "Inventory"}})),
-		"bad/broken.stf":         "not a string table",
-		"texture/crate.dds":      "raw crate bytes",
-		"texture/patched.dds":    "archive loses",
-		"appearance/crate.apt":   string(iffBytes(t, "TEST", "NAME", "hello")),
-		"datatable/npc.iff":      string(dtableBytes(t)),
-		"datatable/broken.iff":   string(form("DTII", form("0001"))),
-		"appearance/hut.pob":     string(pobBytes(t)),
-		"appearance/broken.pob":  string(form("PRTO", form("0003"))),
+		"string/en/sub/deep.stf":            string(stfBytes(t, []stfEntry{{"label", "Inventory"}})),
+		"other/stray.stf":                   string(stfBytes(t, []stfEntry{{"label", "Inventory"}})),
+		"bad/broken.stf":                    "not a string table",
+		"bad/form.iff":                      "FORM\x00\x00\x00\xff",
+		"texture/crate.dds":                 "raw crate bytes",
+		"texture/patched.dds":               "archive loses",
+		"appearance/crate.apt":              string(iffBytes(t, "TEST", "NAME", "hello")),
+		"datatable/npc.iff":                 string(dtableBytes(t)),
+		"datatable/broken.iff":              string(form("DTII", form("0001"))),
+		"appearance/hut.pob":                string(pobBytes(t)),
+		"appearance/broken.pob":             string(form("PRTO", form("0003"))),
+		"object/draft_schematic/pistol.iff": string(templateBytes()),
+		"object/broken.iff": string(form("SHOT", form("0010",
+			chunk("PCNT", []byte{1, 0, 0, 0}),
+			chunk("XXXX", []byte("no\x00")),
+		))),
 		"palette/frog.pal": string(palBytes(t, []palEntry{
 			{0x5d, 0x35, 0x34},
 			{0xff, 0xff, 0xff},
@@ -448,6 +505,39 @@ func pobBytes(t *testing.T) []byte {
 				)),
 			),
 			chunk("CRC ", le(uint32(1))),
+		),
+	)
+}
+
+// templateBytes builds a draft schematic object template: an SDSC layer with
+// one attribute range and the template it crafts, around an SITN layer that
+// sets nothing, around a SHOT layer that names it and leaves a flag unset.
+func templateBytes() []byte {
+	param := func(name string, value ...string) []byte {
+		return chunk("XXXX", []byte(name+"\x00"+strings.Join(value, "")))
+	}
+	return form("SDSC",
+		form("DERV", chunk("XXXX", []byte("object/draft_schematic/base.iff\x00"))),
+		form("0003",
+			chunk("PCNT", []byte{2, 0, 0, 0}),
+			// The list's bytes and the struct's tag precede the struct's form,
+			// and an empty chunk follows the last one.
+			param("attributes", "\x00\x01\x00\x00\x00\x01ASSD"),
+			form("DSSA",
+				chunk("PCNT", []byte{2, 0, 0, 0}),
+				param("name", "\x01\x01crafting\x00\x01minDamage\x00"),
+				param("value", "\x03 \x11\x00\x00\x00\x22\x00\x00\x00"),
+			),
+			chunk("XXXX", nil),
+			param("craftedSharedTemplate", "\x01object/weapon/pistol.iff\x00"),
+		),
+		form("SITN",
+			form("0000", chunk("PCNT", []byte{0, 0, 0, 0})),
+			form("SHOT", form("0010",
+				chunk("PCNT", []byte{2, 0, 0, 0}),
+				param("objectName", "\x01\x01weapon_name\x00\x01pistol\x00"),
+				param("snapToTerrain", "\x00"),
+			)),
 		),
 	)
 }
