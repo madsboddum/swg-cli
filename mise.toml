@@ -1,4 +1,10 @@
-# Go itself is pinned by the toolchain directive in go.mod, not here.
+# Go itself is pinned by the toolchain directive in go.mod, not here. mise reads
+# it from there as an exact version, so a newer Go elsewhere on PATH, which the
+# directive alone would let win, cannot drift from the one golangci-lint is
+# built with.
+[settings]
+idiomatic_version_file_enable_tools = ["go"]
+
 [tools]
 cocogitto = "7.0.0"
 golangci-lint = "2.13.2"
